@@ -7,12 +7,25 @@ read automatically in local development (see ``.env.example``).
 
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     # ── Database ────────────────────────────────────────────────────────────
     DATABASE_URL: str = "postgresql://srh_user:srh_pass@db:5432/srh_db"
+
+    @field_validator("DATABASE_URL")
+    @classmethod
+    def _clean_db_url(cls, v: str) -> str:
+        # Strip stray whitespace/newlines that can sneak in when pasting the URL
+        # into a dashboard env-var field (otherwise the DB name ends up as
+        # "srh_db\n"). Also normalize the legacy ``postgres://`` scheme that
+        # Render/Heroku emit but SQLAlchemy 2.0 rejects.
+        v = v.strip()
+        if v.startswith("postgres://"):
+            v = v.replace("postgres://", "postgresql://", 1)
+        return v
 
     # ── Admin ───────────────────────────────────────────────────────────────
     # Bearer token required by /api/v1/admin/* endpoints.
