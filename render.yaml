@@ -14,9 +14,10 @@ services:
     region: virginia            # must match the database's region for the internal URL
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/v1/health
-    # Free tier has no pre-deploy hook, so migrate then serve in one command.
-    # $PORT is injected by Render and must be the port uvicorn binds to.
-    dockerCommand: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    # Free tier has no pre-deploy hook, so a startup script migrates then serves.
+    # Pointing at the script (vs. an inline quoted command) avoids Render's
+    # command parsing splitting the quotes and failing with exit 127.
+    dockerCommand: sh /app/entrypoint.sh
     envVars:
       - key: DATABASE_URL
         sync: false             # set manually: paste the DB's Internal connection string

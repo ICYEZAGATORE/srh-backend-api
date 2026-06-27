@@ -13,6 +13,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the application source.
 COPY . .
 
+# Normalize line endings (in case of a CRLF checkout) and make the script runnable.
+RUN sed -i 's/\r$//' /app/entrypoint.sh && chmod +x /app/entrypoint.sh
+
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Migrate then serve. Render's $PORT is honoured by the script (defaults to 8000).
+CMD ["sh", "/app/entrypoint.sh"]
