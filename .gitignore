@@ -1,0 +1,32 @@
+# Virtual environment
+venv/
+env/
+
+# Environment variables - NEVER push this
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Local SQLite databases (never deployed; Postgres is used in prod)
+*.db
+*.sqlite
+*.sqlite3
+
+# Archived pre-rewrite code — kept locally, not shipped
+_legacy/

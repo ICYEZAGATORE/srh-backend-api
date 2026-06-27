@@ -1,73 +1,52 @@
 """
-main.py — FastAPI application entry point for the SRH AI Platform.
+app/main.py — FastAPI application entry point for the SRH Backend API.
 
-Auto-generated Swagger UI available at:
-  http://localhost:8000/docs       (Swagger UI)
-  http://localhost:8000/redoc      (ReDoc)
+Run locally:   uvicorn app.main:app --reload
+Swagger UI:    http://localhost:8000/docs
 """
 
-import sys
-import os
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import ask, auth, assess, health
-from app.services.rag_service import rag_service
-from app.config import settings
+from app.routers import admin, assessment, chat, health, session, tts
+
+API_PREFIX = "/api/v1"
 
 
-# ── Lifespan: load ML models once at startup ──────────────────────────────────
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Load the FAISS index and embedding model on startup; release on shutdown."""
-    print("Starting up — loading ML pipeline...")
-    await rag_service.load()
-    print(f"RAG service ready. Index vectors: {rag_service.index.ntotal}")
+async def lifespan(_app: FastAPI):
+    # Startup
+    print("SRH Backend API running")
     yield
-    print("Shutting down.")
+    # Shutdown (nothing to clean up yet)
 
 
-# ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(
-    title="SRH AI Platform API",
+    title="SRH Backend API",
     description=(
-        "AI-powered sexual and reproductive health education platform "
-        "for Rwandan teenagers and persons with disabilities. "
-        "Supports bilingual interaction in English and Kinyarwanda."
+        "AI-powered Sexual and Reproductive Health education platform for "
+        "Rwandan teenagers and persons with disabilities. Bilingual: "
+        "Kinyarwanda and English."
     ),
-    version="0.1.0",
-    contact={
-        "name": "ALU Capstone — BSc. Software Engineering",
-    },
-    license_info={"name": "MIT"},
+    version="1.0.0",
     lifespan=lifespan,
 )
 
-
-# ── CORS ──────────────────────────────────────────────────────────────────────
+# CORS — allow all origins for now; tighten before production.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
-# ── Routers ───────────────────────────────────────────────────────────────────
-app.include_router(health.router,  prefix="/api/v1",  tags=["Health"])
-app.include_router(auth.router,    prefix="/api/v1",  tags=["Auth"])
-app.include_router(ask.router,     prefix="/api/v1",  tags=["SRH Chat"])
-app.include_router(assess.router,  prefix="/api/v1",  tags=["Assessment"])
-
-
-# ── Root ──────────────────────────────────────────────────────────────────────
-@app.get("/", tags=["Root"])
-async def root():
-    return {
-        "message": "SRH AI Platform API",
-        "version": "0.1.0",
-        "docs": "/docs",
-        "health": "/api/v1/health",
-    }
+# Register all routers under /api/v1.
+app.include_router(health.router, prefix=API_PREFIX)
+app.include_router(session.router, prefix=API_PREFIX)
+app.include_router(chat.router, prefix=API_PREFIX)
+app.include_router(tts.router, prefix=API_PREFIX)
+app.include_router(assessment.router, prefix=API_PREFIX)
+app.include_router(admin.router, prefix=API_PREFIX)
