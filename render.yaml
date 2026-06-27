@@ -1,0 +1,34 @@
+# Render Blueprint for the SRH Backend API.
+# Deploy via Render Dashboard → "New +" → "Blueprint" and point it at this repo.
+# Creates a free PostgreSQL database and a Dockerized FastAPI web service,
+# wires DATABASE_URL automatically, and runs Alembic migrations on each deploy.
+
+databases:
+  - name: srh-db
+    databaseName: srh_db
+    user: srh_user
+    plan: free
+
+services:
+  - type: web
+    name: srh-backend-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/v1/health
+    # Free tier has no pre-deploy hook, so migrate then serve in one command.
+    # $PORT is injected by Render and must be the port uvicorn binds to.
+    dockerCommand: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: srh-db
+          property: connectionString
+      - key: ADMIN_API_KEY
+        generateValue: true        # Render generates a strong secret
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: LOG_UNSAFE_TEXT
+        value: "false"

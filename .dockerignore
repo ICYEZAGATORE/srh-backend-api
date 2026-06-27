@@ -1,0 +1,28 @@
+# Local virtualenv (Windows binaries — must never go into the Linux image)
+venv/
+env/
+
+# Archived pre-rewrite code
+_legacy/
+
+# VCS / IDE
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Local databases & secrets
+*.db
+*.sqlite
+*.sqlite3
+.env
+
+# Tests are not needed in the runtime image
+tests/
