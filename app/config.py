@@ -41,6 +41,37 @@ class Settings(BaseSettings):
     # stored as anonymised text (no user identity is ever linked — see models).
     LOG_UNSAFE_TEXT: bool = False
 
+    # ── RAG: embeddings ─────────────────────────────────────────────────────
+    # Multilingual sentence-transformer (384-dim); handles Kinyarwanda via
+    # cross-lingual transfer. Loaded locally as a singleton (see app/ml/embeddings.py).
+    EMBEDDING_MODEL: str = "paraphrase-multilingual-MiniLM-L12-v2"
+    EMBEDDING_DIM: int = 384
+    # Optional HuggingFace token (used only if the embedder falls back to the
+    # HF Inference API, and by the LLM layer / benchmark).
+    HF_API_TOKEN: str = ""
+
+    # ── RAG: vector store ───────────────────────────────────────────────────
+    # "pinecone" (cloud) or "chroma" (local dev / CI, no API key required).
+    VECTOR_STORE_BACKEND: str = "pinecone"
+    PINECONE_API_KEY: str = ""
+    PINECONE_INDEX_NAME: str = "srh-knowledge-base"
+    # Modern Pinecone serverless spec (the deprecated pod-based
+    # PINECONE_ENVIRONMENT is kept below for backward compatibility only).
+    PINECONE_CLOUD: str = "aws"
+    PINECONE_REGION: str = "us-east-1"
+    PINECONE_ENVIRONMENT: str = ""  # legacy pod-based indexes only; unused for serverless
+    CHROMA_PERSIST_DIR: str = "./data/chroma_db"
+
+    # ── RAG: LLM ────────────────────────────────────────────────────────────
+    # HuggingFace model ID for response generation. Update after the Part 5
+    # benchmark selects a winner (also exposed as the LLM_MODEL env var).
+    LLM_MODEL: str = "Qwen/Qwen2-7B-Instruct"
+    DEFAULT_LLM_MODEL: str = "Qwen/Qwen2-7B-Instruct"
+    LLM_MAX_NEW_TOKENS: int = 300
+    LLM_TIMEOUT_SECONDS: int = 30
+    # Optional — only used for the GPT-4o reference benchmark (Part 5).
+    OPENAI_API_KEY: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

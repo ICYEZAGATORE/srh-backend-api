@@ -27,6 +27,12 @@ class KnowledgeEntry(Base):
     topic: Mapped[str | None] = mapped_column(String(50), nullable=True)
     source: Mapped[str | None] = mapped_column(String(255), nullable=True)
     reviewed_by: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # RAG ingestion fields (migration 0002): trace a row to its vector and make
+    # ingestion idempotent via a content hash (unique index).
+    pinecone_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    chunk_hash: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, unique=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

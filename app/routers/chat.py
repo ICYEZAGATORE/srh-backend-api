@@ -20,6 +20,7 @@ from app.config import settings
 from app.database import get_db
 from app.ml.conversational_agent import generate_response
 from app.ml.embeddings import retrieve_context
+from app.ml.language_classifier import detect_language
 from app.ml.safety_classifier import classify_safety
 from app.ml.topic_classifier import classify_topic
 from app.models.query import Query
@@ -52,9 +53,16 @@ def chat(request: ChatRequest, db: SASession = Depends(get_db)) -> ChatResponse:
     safety = classify_safety(request.message)
     is_unsafe = safety.get("label") == SAFETY_UNSAFE
 
+    # 2. Language detection (proxy stub until the trained model is swapped in).
+    #    The detected language flows through retrieval + generation. We keep the
+    #    client-declared `lang` for the response contract, but prefer the
+    #    detected language for the RAG pipeline.
+    detected = detect_language(request.message, hint=request.lang)
+    detected_lang = detected.get("language", request.lang)
+
     session_id = _resolve_session_id(db, request.session_id)
 
-    # 2. Log the query regardless of safety result. For UNSAFE queries the raw
+    # 3. Log the query regardless of safety result. For UNSAFE queries the raw
     #    text is discarded unless LOG_UNSAFE_TEXT is enabled (privacy default).
     store_text = request.message
     if is_unsafe and not settings.LOG_UNSAFE_TEXT:
@@ -63,7 +71,7 @@ def chat(request: ChatRequest, db: SASession = Depends(get_db)) -> ChatResponse:
     query = Query(
         session_id=session_id,
         text=store_text,
-        lang=request.lang,
+        lang=detected_lang,
         safe=not is_unsafe,
         fallback=False,
     )
@@ -92,10 +100,16 @@ def chat(request: ChatRequest, db: SASession = Depends(get_db)) -> ChatResponse:
     topic_result = classify_topic(request.message)
     topic = topic_result.get("topic")
 
-    # 5. RAG retrieval + LLM generation.
-    context_chunks = retrieve_context(request.message, request.lang)
+    # 5. RAG retrieval + LLM generation (filtered by detected language + topic).
+    context_chunks = retrieve_context(request.message, detected_lang, topic=topic)
     response_text = generate_response(
-        request.message, context_chunks, request.lang, request.simplified
+        request.message,
+        context_chunks,
+        detected_lang,
+        request.simplified,
+        topic=topic,
+        session_id=str(session_id) if session_id else None,
+        db=db,
     )
 
     # 6. Persist the result.
