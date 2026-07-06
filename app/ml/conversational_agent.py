@@ -95,6 +95,12 @@ class SRHConversationalAgent:
     """LangChain-style RAG agent over the SRH knowledge base."""
 
     def __init__(self, model_id: Optional[str] = None) -> None:
+        # Default LLM = Qwen/Qwen2-7B-Instruct (settings.LLM_MODEL). This is the
+        # winner of the Part 5 benchmark (notebooks/llm_benchmark.ipynb): among the
+        # chat models (LLaMA-3-8B, Mistral-7B-v0.3, Qwen2-7B) it scored highest on
+        # the weighted rubric (accuracy 40% · safety 30% · latency 20% · cost 10%),
+        # helped by the lowest latency (~19s vs 21–23s). NLLB-200 scored higher
+        # overall but is translation-only and excluded from generation.
         self.model_id = model_id or settings.LLM_MODEL
         self._client = None
 

@@ -1,24 +1,21 @@
 """
 app/ml/language_classifier.py — Model 2: English vs Kinyarwanda language ID.
 
-STUB (proxy): the trained character-n-gram classifier is not swapped in yet, so
-this uses a lightweight ``langdetect`` + Kinyarwanda-token heuristic as a proxy
-(see requirements: langdetect). Keep this signature stable so the real model
-(``language_classifier.pkl``) can be dropped in without touching the router.
-
-To integrate the real model:
-    import joblib
-    _model = joblib.load(settings.LANGUAGE_MODEL_PATH)
-    def detect_language(text, hint=None):
-        pred = _model.predict([text])[0]
-        return {"label": int(pred), "language": {0: "en", 1: "rw"}[int(pred)], ...}
+Loads ``models/language_classifier.pkl`` (character n-gram TF-IDF + Logistic
+Regression, trained from scratch on EN/RW) once via the model registry and uses
+it as the primary detector. The previous ``langdetect`` + Kinyarwanda-token
+heuristic is retained as a FALLBACK for when the artifact is unavailable.
 
 Label convention matches the trained model: english=0, kinyarwanda=1.
+Return shape ``{"label", "language", "score"}`` is stable; ``hint`` (the
+client-declared ``lang``) is used only as a tie-breaker in the fallback path.
 """
 
 from __future__ import annotations
 
 import re
+
+from app.ml.model_registry import get_language_model
 
 _LABELS = {0: "en", 1: "rw"}
 
@@ -34,9 +31,23 @@ _RW_MARKERS = {
 def detect_language(text: str, hint: str | None = None) -> dict:
     """Return the detected language for ``text``.
 
+    Uses the trained char n-gram model when available, else the heuristic below.
     Shape mirrors the other classifiers: ``{"label", "language", "score"}``.
-    ``hint`` (e.g. the client-declared ``lang``) is used only as a tie-breaker.
     """
+    model = get_language_model()
+    if model is not None:
+        label = int(model.predict([text])[0])
+        try:
+            score = float(model.predict_proba([text])[0].max())
+        except Exception:  # pragma: no cover - classifier without predict_proba
+            score = 1.0
+        return {"label": label, "language": _LABELS.get(label, "en"), "score": score}
+
+    return _detect_language_heuristic(text, hint)
+
+
+def _detect_language_heuristic(text: str, hint: str | None = None) -> dict:
+    """Fallback detector: Kinyarwanda-token heuristic + langdetect (no artifact)."""
     tokens = re.findall(r"[a-z']+", (text or "").lower())
     if tokens:
         hits = sum(1 for t in tokens if t in _RW_MARKERS)

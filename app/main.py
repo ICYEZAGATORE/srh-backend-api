@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.config import settings
 from app.routers import admin, assessment, chat, health, session, tts
 
 API_PREFIX = "/api/v1"
@@ -17,8 +18,12 @@ API_PREFIX = "/api/v1"
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    # Startup
-    print("SRH Backend API running")
+    # Startup — eagerly load trained ML artifacts once so the first request is
+    # not penalised with disk/deserialisation latency (getters also lazy-load).
+    from app.ml.model_registry import warmup
+
+    status = warmup()
+    print(f"SRH Backend API running — ML artifacts: {status}")
     yield
     # Shutdown (nothing to clean up yet)
 
@@ -34,10 +39,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — allow all origins for now; tighten before production.
+# CORS — scoped to the configured frontend origin(s). Set CORS_ALLOW_ORIGINS to
+# the deployed SRH-FRONTEND origin in production (defaults to local dev origins).
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

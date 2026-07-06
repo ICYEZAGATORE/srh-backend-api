@@ -35,11 +35,29 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "INFO"
 
+    # ── CORS ────────────────────────────────────────────────────────────────
+    # Comma-separated list of allowed frontend origins. Defaults to local dev
+    # origins only — set CORS_ALLOW_ORIGINS to the deployed SRH-FRONTEND origin(s)
+    # in production. Never use "*" with credentials (invalid per the CORS spec).
+    CORS_ALLOW_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173"
+
+    @property
+    def cors_allow_origins(self) -> list[str]:
+        return [o.strip() for o in self.CORS_ALLOW_ORIGINS.split(",") if o.strip()]
+
     # ── Privacy ─────────────────────────────────────────────────────────────
     # When False, the raw text of UNSAFE queries is discarded before storage;
     # only the safety label/flag is kept for auditing. Safe queries are always
     # stored as anonymised text (no user identity is ever linked — see models).
     LOG_UNSAFE_TEXT: bool = False
+
+    # ── Trained classifiers (Models 1–3) ────────────────────────────────────
+    # Bare sklearn Pipelines (joblib) copied from the srh-ml-model repo into
+    # ./models. Loaded once at startup via app/ml/model_registry.py. If a file
+    # is absent the classifier falls back to a safe default (see each module).
+    SAFETY_MODEL_PATH: str = "models/safety_classifier.pkl"
+    TOPIC_MODEL_PATH: str = "models/topic_classifier_B.pkl"
+    LANGUAGE_MODEL_PATH: str = "models/language_classifier.pkl"
 
     # ── RAG: embeddings ─────────────────────────────────────────────────────
     # Multilingual sentence-transformer (384-dim); handles Kinyarwanda via

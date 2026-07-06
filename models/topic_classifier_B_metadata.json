@@ -1,0 +1,41 @@
+{
+  "model": "Model 3 \u2014 SRH Intent & Topic Classifier",
+  "approach": "Approach B \u2014 Augmented Minority",
+  "best_model": "XGBoost",
+  "classes": [
+    "contraception",
+    "sti_hiv",
+    "pregnancy",
+    "puberty",
+    "gbv_consent",
+    "disability_srh",
+    "general_srh"
+  ],
+  "features": "TF-IDF (word, ngram 1-2, max 30k, sublinear)",
+  "val_metrics": {
+    "accuracy": 0.9663,
+    "f1_macro": 0.9638,
+    "f1_weighted": 0.9663,
+    "roc_auc_ovr": 0.998
+  },
+  "val_per_class_f1": {
+    "contraception": 0.9748,
+    "sti_hiv": 0.978,
+    "pregnancy": 0.9561,
+    "puberty": 0.9635,
+    "gbv_consent": 0.9744,
+    "disability_srh": 0.9394,
+    "general_srh": 0.9602
+  },
+  "test_metrics": {
+    "accuracy": 0.9693,
+    "f1_macro": 0.9628,
+    "f1_weighted": 0.9692,
+    "roc_auc_ovr": 0.9985
+  },
+  "rows": {
+    "train": 7902,
+    "val": 1693,
+    "test": 1694
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "model": "Model 1 \u2014 Safety Classifier (binary SAFE/UNSAFE)",
+  "scheme": "binary",
+  "label_map": {
+    "0": "safe",
+    "1": "unsafe"
+  },
+  "evaluated_on": "query",
+  "divergence_from_3_6": "4-class response-side scheme in 3.6 reduced to binary query-side; data only carries a binary label. Response-side re-check handled in backend chat.py.",
+  "language_scope": "english (all source datasets are English); Kinyarwanda handled by rule-based pre-filter",
+  "best_model": "XGBoost",
+  "classes": [
+    "safe",
+    "unsafe"
+  ],
+  "features": "Word n-gram TF-IDF (word, 1-2, max 50k, sublinear)",
+  "val_metrics": {
+    "accuracy": 0.784,
+    "f1_unsafe": 0.775,
+    "recall_unsafe": 0.744,
+    "precision_unsafe": 0.8087,
+    "f1_macro": 0.7837,
+    "roc_auc": 0.8648
+  },
+  "test_metrics": {
+    "accuracy": 0.7867,
+    "f1_unsafe": 0.764,
+    "recall_unsafe": 0.6907,
+    "precision_unsafe": 0.8548,
+    "f1_macro": 0.7847,
+    "roc_auc": 0.8702
+  },
+  "sources": {
+    "hh_rlhf_chosen": 1411,
+    "aegis": 920,
+    "beavertails": 864,
+    "toxicchat": 270,
+    "hh_rlhf_rejected": 35
+  },
+  "rows": {
+    "train": 3500,
+    "val": 750,
+    "test": 750
+  }
+}

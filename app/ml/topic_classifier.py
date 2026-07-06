@@ -1,10 +1,21 @@
 """
 app/ml/topic_classifier.py — Model 3: 7-class SRH topic classifier.
 
-STUB: returns mock data while SRH-ML-MODEL is in development. Keep this
-signature stable so the real model can be swapped in without touching any
-router code.
+Loads ``models/topic_classifier_B.pkl`` (word TF-IDF + XGBoost, approach B —
+augmented minority) once via the model registry. The model's integer labels
+match the TOPICS map below (verified against the training label map).
+
+NOTE: the topic model is trained on English vocabulary; Kinyarwanda queries get
+a low-confidence guess. That is acceptable here — topic is used for retrieval
+routing/analytics, and retrieval is additionally filtered by detected language.
+
+If the artifact is missing, falls back to the previous default (general_srh).
+Return shape ``{"label", "topic", "score"}`` is stable.
 """
+
+from __future__ import annotations
+
+from app.ml.model_registry import get_topic_model
 
 # Index -> human-readable topic, for mapping the model's label to a string.
 TOPICS = {
@@ -19,7 +30,13 @@ TOPICS = {
 
 
 def classify_topic(text: str) -> dict:
-    # STUB — replace with joblib.load when model is ready
-    return {"label": 6, "topic": "general_srh", "score": 0.80}
-    # 7 classes: contraception(0), sti_hiv(1), pregnancy(2), puberty(3),
-    #            gbv_consent(4), disability_srh(5), general_srh(6)
+    model = get_topic_model()
+    if model is None:
+        return {"label": 6, "topic": "general_srh", "score": 0.80}
+
+    label = int(model.predict([text])[0])
+    try:
+        score = float(model.predict_proba([text])[0].max())
+    except Exception:  # pragma: no cover - classifier without predict_proba
+        score = 1.0
+    return {"label": label, "topic": TOPICS.get(label, "general_srh"), "score": score}

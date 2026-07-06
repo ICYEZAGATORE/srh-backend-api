@@ -2,13 +2,16 @@
 app/routers/chat.py — Core conversational endpoint.
 
 Pipeline order (must not change when real models replace the stubs):
-    1. Safety classification.
-    2. Log the query regardless of the result (anonymised audit trail).
-    3. If UNSAFE -> fallback response, no downstream processing.
-    4. Topic classification.
-    5. RAG retrieval + LLM generation.
-    6. Persist the result.
-    7. Return the response.
+    1. Safety classification (INPUT side — the user query).
+    2. Language detection.
+    3. Log the query regardless of the result (anonymised audit trail).
+    4. If the query is UNSAFE -> fallback response, no downstream processing.
+    5. Topic classification.
+    6. RAG retrieval + LLM generation.
+    7. Safety classification (OUTPUT side — the generated response, per §3.6):
+       last line of defence; a flagged generation is replaced with a fallback.
+    8. Persist the result.
+    9. Return the response.
 """
 
 import uuid
@@ -112,14 +115,36 @@ def chat(request: ChatRequest, db: SASession = Depends(get_db)) -> ChatResponse:
         db=db,
     )
 
-    # 6. Persist the result.
+    # 7. Output-side safety check (§3.6) — re-run the safety classifier on the
+    #    generated response. This is the last line of defence against a bad
+    #    generation; a flagged response is never returned to the user.
+    response_safety = classify_safety(response_text)
+    if response_safety.get("label") == SAFETY_UNSAFE:
+        query.safe = False
+        query.topic = topic
+        query.response = None  # do not persist the unsafe generation
+        query.fallback = True
+        db.commit()
+
+        fb = get_fallback(request.lang)
+        return ChatResponse(
+            response=None,
+            safe=False,
+            topic=topic,
+            lang=request.lang,
+            fallback=True,
+            fallback_message=fb["fallback_message"],
+            referral=fb["referral"],
+        )
+
+    # 8. Persist the result.
     query.safe = True
     query.topic = topic
     query.response = response_text
     query.fallback = False
     db.commit()
 
-    # 7. Return.
+    # 9. Return.
     return ChatResponse(
         response=response_text,
         safe=True,
