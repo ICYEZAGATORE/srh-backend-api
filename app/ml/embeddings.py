@@ -70,36 +70,57 @@ class SRHEmbeddingModel:
         return cls._instance
 
     def _load(self) -> None:
-        # 1) Local sentence-transformers (preferred).
-        try:
-            from sentence_transformers import SentenceTransformer
+        mode = (settings.EMBEDDING_BACKEND or "auto").lower()
 
-            self._local_model = SentenceTransformer(self.model_name)
-            self._backend = "local"
-            logger.info("SRHEmbeddingModel: loaded '%s' locally.", self.model_name)
-            return
-        except Exception as exc:  # pragma: no cover - depends on env
-            logger.warning("Local embedding load failed (%s); trying HF API.", exc)
+        # 1) Local sentence-transformers. Skipped entirely when mode == "hf_api"
+        #    so torch is never imported (avoids OOM on the 512 MB Render tier).
+        if mode in ("auto", "local"):
+            try:
+                from sentence_transformers import SentenceTransformer
 
-        # 2) HuggingFace Inference API fallback.
+                self._local_model = SentenceTransformer(self.model_name)
+                self._backend = "local"
+                logger.info("SRHEmbeddingModel: loaded '%s' locally.", self.model_name)
+                return
+            except Exception as exc:  # pragma: no cover - depends on env
+                if mode == "local":
+                    raise EmbeddingUnavailableError(
+                        f"EMBEDDING_BACKEND=local but could not load "
+                        f"'{self.model_name}': {exc}"
+                    ) from exc
+                logger.warning("Local embedding load failed (%s); trying HF API.", exc)
+
+        # 2) HuggingFace Inference API (forced when mode == "hf_api", else fallback).
         if settings.HF_API_TOKEN:
             try:
                 from huggingface_hub import InferenceClient
 
                 self._hf_client = InferenceClient(
-                    model=self.model_name, token=settings.HF_API_TOKEN
+                    model=self._hf_repo_id(), token=settings.HF_API_TOKEN
                 )
                 self._backend = "hf_api"
-                logger.info("SRHEmbeddingModel: using HF Inference API.")
+                logger.info(
+                    "SRHEmbeddingModel: using HF Inference API (%s).", self._hf_repo_id()
+                )
                 return
             except Exception as exc:  # pragma: no cover
                 logger.error("HF Inference API init failed: %s", exc)
 
         raise EmbeddingUnavailableError(
             "Embedding model unavailable: could not load "
-            f"'{self.model_name}' locally and no working HF_API_TOKEN fallback. "
-            "Install sentence-transformers or set HF_API_TOKEN."
+            f"'{self.model_name}' locally and no working HF_API_TOKEN fallback "
+            f"(EMBEDDING_BACKEND={mode}). Install sentence-transformers or set "
+            "HF_API_TOKEN (and EMBEDDING_BACKEND=hf_api on memory-limited hosts)."
         )
+
+    def _hf_repo_id(self) -> str:
+        """Fully-qualified HF repo id for the API path.
+
+        ``SentenceTransformer`` resolves the bare name locally, but the HF
+        Inference API needs the full ``sentence-transformers/<name>`` repo id.
+        """
+        name = self.model_name
+        return name if "/" in name else f"sentence-transformers/{name}"
 
     # ── public API (Part 4.1 contract) ──────────────────────────────────────
     @property

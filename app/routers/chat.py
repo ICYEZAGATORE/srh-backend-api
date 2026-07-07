@@ -24,7 +24,7 @@ from app.database import get_db
 from app.ml.conversational_agent import generate_response
 from app.ml.embeddings import retrieve_context
 from app.ml.language_classifier import detect_language
-from app.ml.safety_classifier import classify_safety
+from app.ml.safety_classifier import classify_response_safety, classify_safety
 from app.ml.topic_classifier import classify_topic
 from app.models.query import Query
 from app.models.session import Session
@@ -115,10 +115,12 @@ def chat(request: ChatRequest, db: SASession = Depends(get_db)) -> ChatResponse:
         db=db,
     )
 
-    # 7. Output-side safety check (§3.6) — re-run the safety classifier on the
-    #    generated response. This is the last line of defence against a bad
-    #    generation; a flagged response is never returned to the user.
-    response_safety = classify_safety(response_text)
+    # 7. Output-side safety check (§3.6) — deterministic RULE filter on the
+    #    generated response (not the query-trained ML model, which false-positives
+    #    on legitimate SRH content; see classify_response_safety). Last line of
+    #    defence against a catastrophic generation; a flagged response is never
+    #    returned to the user.
+    response_safety = classify_response_safety(response_text)
     if response_safety.get("label") == SAFETY_UNSAFE:
         query.safe = False
         query.topic = topic

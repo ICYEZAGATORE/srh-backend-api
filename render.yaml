@@ -29,3 +29,26 @@ services:
         value: INFO
       - key: LOG_UNSAFE_TEXT
         value: "false"
+      # ── RAG / LLM ────────────────────────────────────────────────────────
+      # Free tier = 512 MB RAM: compute embeddings via the HF Inference API so
+      # torch / sentence-transformers are never loaded locally (loading them
+      # here OOMs and 502s /chat).
+      - key: EMBEDDING_BACKEND
+        value: hf_api
+      # Required for LLM generation AND the hf_api embedding path. Secret.
+      - key: HF_API_TOKEN
+        sync: false
+      - key: LLM_MODEL
+        value: meta-llama/Meta-Llama-3-8B-Instruct
+      # Vector store: Pinecone (cloud) — Render's disk is ephemeral, so a local
+      # Chroma store would not persist. The index must be seeded with the KB
+      # (same embedding model) before retrieval returns grounding.
+      - key: VECTOR_STORE_BACKEND
+        value: pinecone
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: PINECONE_INDEX_NAME
+        value: srh-knowledge-base
+      # Allow the deployed frontend origin (CORS). Comma-separated for multiples.
+      - key: CORS_ALLOW_ORIGINS
+        value: https://srh-frontend.vercel.app

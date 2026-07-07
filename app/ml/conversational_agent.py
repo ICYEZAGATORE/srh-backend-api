@@ -95,12 +95,13 @@ class SRHConversationalAgent:
     """LangChain-style RAG agent over the SRH knowledge base."""
 
     def __init__(self, model_id: Optional[str] = None) -> None:
-        # Default LLM = Qwen/Qwen2-7B-Instruct (settings.LLM_MODEL). This is the
-        # winner of the Part 5 benchmark (notebooks/llm_benchmark.ipynb): among the
-        # chat models (LLaMA-3-8B, Mistral-7B-v0.3, Qwen2-7B) it scored highest on
-        # the weighted rubric (accuracy 40% · safety 30% · latency 20% · cost 10%),
-        # helped by the lowest latency (~19s vs 21–23s). NLLB-200 scored higher
-        # overall but is translation-only and excluded from generation.
+        # Default LLM = meta-llama/Meta-Llama-3-8B-Instruct (settings.LLM_MODEL).
+        # The Part 5 benchmark (notebooks/llm_benchmark.ipynb) ranked Qwen2-7B
+        # first on the weighted rubric (accuracy 40% · safety 30% · latency 20% ·
+        # cost 10%), with LLaMA-3-8B close behind. Qwen2-7B is not servable by the
+        # HF Inference providers enabled on our token, so we serve the benchmark's
+        # runner-up (LLaMA-3-8B), which IS served via chat_completion. Revisit if
+        # a provider serving Qwen2/2.5 is enabled.
         self.model_id = model_id or settings.LLM_MODEL
         self._client = None
 
@@ -117,19 +118,25 @@ class SRHConversationalAgent:
         return self._client
 
     def _call_llm(self, prompt: str) -> str:
-        """Call the HF Inference API. Raises on failure/timeout (caught upstream)."""
+        """Call the HF Inference API. Raises on failure/timeout (caught upstream).
+
+        Uses the ``chat_completion`` task (not ``text_generation``): the current
+        instruct models (Qwen2, LLaMA-3, Mistral-v0.3) are served under the
+        "conversational" task by HF providers, and ``text_generation`` is
+        rejected for them. The safety-constrained prompt is passed as a single
+        user turn; the system constraints are already baked into that prompt.
+        """
         if not settings.HF_API_TOKEN:
             # No token configured -> don't attempt a network call; the caller
             # will emit the safe fallback. Keeps tests/offline dev fast.
             raise RuntimeError("HF_API_TOKEN not set; skipping LLM call.")
         client = self._get_client()
-        return client.text_generation(
-            prompt,
-            max_new_tokens=settings.LLM_MAX_NEW_TOKENS,
+        completion = client.chat_completion(
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=settings.LLM_MAX_NEW_TOKENS,
             temperature=0.3,
-            repetition_penalty=1.1,
-            return_full_text=False,
         )
+        return completion.choices[0].message.content or ""
 
     # ── retrieval with broaden fallback (Part 4.3 step 3) ───────────────────
     def _retrieve(self, query: str, lang: str, topic: Optional[str]) -> List[dict]:

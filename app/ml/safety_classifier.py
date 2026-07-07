@@ -53,9 +53,13 @@ def _rule_is_unsafe(text: str) -> bool:
 
 
 def classify_safety(text: str) -> dict:
-    """Classify ``text`` (query or response) as SAFE (0) or UNSAFE (1).
+    """Classify a user QUERY as SAFE (0) or UNSAFE (1).
 
     Rule pre-filter first (deterministic, has precedence), then the ML model.
+    The ML model was trained and validated on queries (see
+    ``safety_classifier_metadata.json`` — ``"evaluated_on": "query"``), so it is
+    only used on the input side. For the output side use
+    :func:`classify_response_safety`.
     """
     # Layer 1 — deterministic bilingual rule filter (precedence, short-circuits).
     if _rule_is_unsafe(text):
@@ -74,3 +78,24 @@ def classify_safety(text: str) -> dict:
     except Exception:  # pragma: no cover - classifier without predict_proba
         score = 1.0
     return {"label": label, "score": score}
+
+
+def classify_response_safety(text: str) -> dict:
+    """Output-side (§3.6) safety check for a GENERATED response — RULE FILTER ONLY.
+
+    The trained ML classifier is deliberately NOT applied here. It was trained
+    and validated on toxic/adversarial *queries* (hh_rlhf / aegis / beavertails /
+    toxicchat; metadata ``"evaluated_on": "query"``), so on frank-but-legitimate
+    SRH *responses* (contraception, HIV, GBV support) it produces a high
+    false-positive rate and would cause valid answers to be discarded. The
+    deterministic bilingual rule filter — which catches catastrophic content
+    (sexual violence, self-harm, killing, incl. Kinyarwanda terms) — is retained
+    as the response-side guard and is the appropriate, precision-safe check for
+    generated text. A properly trained response-side classifier can replace this
+    later (see srh-ml-model) without changing this interface.
+
+    Return shape ``{"label", "score"}`` matches :func:`classify_safety`.
+    """
+    if _rule_is_unsafe(text):
+        return {"label": 1, "score": 1.0}
+    return {"label": 0, "score": 1.0}

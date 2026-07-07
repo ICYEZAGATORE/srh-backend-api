@@ -64,6 +64,13 @@ class Settings(BaseSettings):
     # cross-lingual transfer. Loaded locally as a singleton (see app/ml/embeddings.py).
     EMBEDDING_MODEL: str = "paraphrase-multilingual-MiniLM-L12-v2"
     EMBEDDING_DIM: int = 384
+    # Where embeddings are computed:
+    #   "auto"   — try local sentence-transformers, fall back to the HF API.
+    #   "hf_api" — force the HF Inference API; NEVER import torch/sentence-
+    #              transformers (required on the 512 MB Render tier, where loading
+    #              the local model OOMs and 502s the /chat endpoint).
+    #   "local"  — force local sentence-transformers.
+    EMBEDDING_BACKEND: str = "auto"
     # Optional HuggingFace token (used only if the embedder falls back to the
     # HF Inference API, and by the LLM layer / benchmark).
     HF_API_TOKEN: str = ""
@@ -83,8 +90,8 @@ class Settings(BaseSettings):
     # ── RAG: LLM ────────────────────────────────────────────────────────────
     # HuggingFace model ID for response generation. Update after the Part 5
     # benchmark selects a winner (also exposed as the LLM_MODEL env var).
-    LLM_MODEL: str = "Qwen/Qwen2-7B-Instruct"
-    DEFAULT_LLM_MODEL: str = "Qwen/Qwen2-7B-Instruct"
+    LLM_MODEL: str = "meta-llama/Meta-Llama-3-8B-Instruct"
+    DEFAULT_LLM_MODEL: str = "meta-llama/Meta-Llama-3-8B-Instruct"
     LLM_MAX_NEW_TOKENS: int = 300
     LLM_TIMEOUT_SECONDS: int = 30
     # Optional — only used for the GPT-4o reference benchmark (Part 5).

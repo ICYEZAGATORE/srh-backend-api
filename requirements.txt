@@ -12,6 +12,17 @@ python-multipart==0.0.9
 pytest==8.2.0
 httpx==0.27.0
 joblib==1.4.2
+# ─── Trained classifiers (Models 1–3) ──────────────────────────────────────
+# Pin the sklearn/xgboost runtime so it no longer floats (it previously resolved
+# transitively to whatever was latest, risking silent prediction drift on the
+# pickled pipelines). NOTE: the committed .pkl artifacts are internally
+# inconsistent — safety_classifier was saved under sklearn 1.9.0, topic under
+# 1.7.0 (verified from the pickle bytes). 1.9.0 loads all three with verified-
+# identical predictions (topic emits a benign InconsistentVersionWarning). The
+# proper long-term fix is to re-export all models from srh-ml-model under one
+# pinned environment; until then this pin is the stable, prediction-verified set.
+scikit-learn==1.9.0
+xgboost==3.2.0
 
 # ─── RAG / LLM layer ───────────────────────────────────────────────────────
 # Versions below are the resolved set installed into the venv (Part 6.2).
