@@ -39,7 +39,7 @@ services:
       - key: HF_API_TOKEN
         sync: false
       - key: LLM_MODEL
-        value: meta-llama/Meta-Llama-3-8B-Instruct
+        value: Qwen/Qwen2.5-7B-Instruct
       # Vector store: Pinecone (cloud) — Render's disk is ephemeral, so a local
       # Chroma store would not persist. The index must be seeded with the KB
       # (same embedding model) before retrieval returns grounding.

@@ -95,13 +95,13 @@ class SRHConversationalAgent:
     """LangChain-style RAG agent over the SRH knowledge base."""
 
     def __init__(self, model_id: Optional[str] = None) -> None:
-        # Default LLM = meta-llama/Meta-Llama-3-8B-Instruct (settings.LLM_MODEL).
-        # The Part 5 benchmark (notebooks/llm_benchmark.ipynb) ranked Qwen2-7B
-        # first on the weighted rubric (accuracy 40% · safety 30% · latency 20% ·
-        # cost 10%), with LLaMA-3-8B close behind. Qwen2-7B is not servable by the
-        # HF Inference providers enabled on our token, so we serve the benchmark's
-        # runner-up (LLaMA-3-8B), which IS served via chat_completion. Revisit if
-        # a provider serving Qwen2/2.5 is enabled.
+        # Default LLM = Qwen/Qwen2.5-7B-Instruct (settings.LLM_MODEL).
+        # The Part 5 benchmark (notebooks/llm_benchmark.ipynb) ranked the Qwen
+        # family first on the weighted rubric (accuracy 40% · safety 30% ·
+        # latency 20% · cost 10%). It was previously unservable, so we ran the
+        # runner-up LLaMA-3-8B — but the HF Inference providers later dropped
+        # Llama-3-8B ("model_not_supported"), and Qwen2.5-7B is now served via
+        # chat_completion, so we serve the benchmark winner's current version.
         self.model_id = model_id or settings.LLM_MODEL
         self._client = None
 

@@ -90,8 +90,12 @@ class Settings(BaseSettings):
     # ── RAG: LLM ────────────────────────────────────────────────────────────
     # HuggingFace model ID for response generation. Update after the Part 5
     # benchmark selects a winner (also exposed as the LLM_MODEL env var).
-    LLM_MODEL: str = "meta-llama/Meta-Llama-3-8B-Instruct"
-    DEFAULT_LLM_MODEL: str = "meta-llama/Meta-Llama-3-8B-Instruct"
+    # Qwen2.5-7B-Instruct: the Part-5 benchmark's winning family (Qwen), now
+    # servable by the HF Inference providers on our token. Replaces
+    # Meta-Llama-3-8B-Instruct, which the enabled providers dropped
+    # ("model_not_supported"), breaking generation for ALL languages.
+    LLM_MODEL: str = "Qwen/Qwen2.5-7B-Instruct"
+    DEFAULT_LLM_MODEL: str = "Qwen/Qwen2.5-7B-Instruct"
     LLM_MAX_NEW_TOKENS: int = 300
     LLM_TIMEOUT_SECONDS: int = 30
     # Optional — only used for the GPT-4o reference benchmark (Part 5).
