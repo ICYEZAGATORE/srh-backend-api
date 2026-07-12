@@ -193,7 +193,12 @@ def retrieve_context(
         flt: dict = {}
         if lang:
             flt["language"] = lang
-        if topic:
+        # Topic filtering is skipped for Kinyarwanda: the topic classifier is
+        # English-trained and mislabels rw queries (in practice almost everything
+        # -> "pregnancy"), so filtering by the predicted topic retrieves the WRONG
+        # chunks. For rw we rely on language + embedding similarity alone. English
+        # keeps topic filtering (the classifier is reliable there).
+        if topic and lang != "rw":
             flt["topic"] = topic
         return store.similarity_search(emb, top_k=top_k, filter=flt or None)
     except Exception as exc:  # keep the endpoint resilient
