@@ -1,0 +1,16 @@
+[
+  {
+    "ts": "2026-07-12T21:15:10.243Z",
+    "case": "empty_input",
+    "pass": true,
+    "note": "Send is disabled for blank/whitespace input — no bad request reaches the backend."
+  },
+  {
+    "ts": "2026-07-12T21:15:16.871Z",
+    "case": "long_input",
+    "chars": 5520,
+    "pass": true,
+    "answer": "Hello! It sounds like you have a lot of questions about contraception. I'm here to help you with accurate and non-judgmental information. Let's start by discussing what contraception is. Contraception refers to different methods used to avoid unintended pregnancies and sexually transmitted infection",
+    "note": "A ~5.5k-char message returns a normal answer/fallback; no client crash or hang."
+  }
+]

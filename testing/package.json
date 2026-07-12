@@ -1,0 +1,15 @@
+{
+  "name": "srh-testing",
+  "version": "1.0.0",
+  "private": true,
+  "description": "System testing suite (e2e, network-bandwidth, frontend performance) for the SRH platform.",
+  "type": "module",
+  "scripts": {
+    "e2e": "playwright test",
+    "bandwidth": "node network-bandwidth/bandwidth_throttle.mjs",
+    "webperf": "node performance/lcp_tti.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1"
+  }
+}

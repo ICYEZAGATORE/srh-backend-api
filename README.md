@@ -5,6 +5,24 @@ Rwanda | Kinyarwanda–English | FastAPI + PostgreSQL + Vector DB
 
 ---
 
+## 🚀 Submission — quick links
+
+| | |
+|---|---|
+| **Live app (try it)** | **https://srh-frontend.vercel.app** |
+| **Deployed API** | https://srh-backend-api.onrender.com · health: `/api/v1/health` · docs: `/docs` |
+| **5-min demo video** (core functionality) | **_add link here_** |
+| **Install & run (step by step)** | [see below ↓](#install--run-step-by-step) |
+| **Related files / repo map** | [see below ↓](#related-files--repo-map) |
+| **Sibling repos** | [SRH-FRONTEND](https://github.com/ICYEZAGATORE/srh-frontend) · [SRH-ML-MODEL](https://github.com/ICYEZAGATORE/srh-ml-model) |
+| **Testing & V&V evidence** | [`testing/`](testing/README.md) · **Deployment plan** [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) |
+
+> The fastest way to see core functionality is the **live app** above (ask an SRH question in
+> English or Kinyarwanda, switch languages, try read-aloud and voice input). To run locally,
+> follow [Install & run](#install--run-step-by-step).
+
+---
+
 ## Project Context
 
 This is the backend API repository for the inclusive SRH education platform targeting Rwandan teenagers (ages 13–19) and persons with disabilities (PWDs). It acts as the central orchestration layer between the React frontend and the ML models.
@@ -13,12 +31,17 @@ Sibling repositories:
 - **SRH-FRONTEND** — React PWA (bilingual chat UI, accessibility features)
 - **SRH-ML-MODEL** — Safety classifier, topic classifier, and bilingual conversational agent (in development)
 
-> **Current status:** The full API structure is built and the RAG layer
-> (retrieval + LLM generation) is **implemented** — see
-> [docs/RAG_ARCHITECTURE.md](docs/RAG_ARCHITECTURE.md). The `safety_classifier`
-> and `topic_classifier` remain stubbed/mock so the frontend can integrate
-> immediately; when **SRH-ML-MODEL** delivers those trained models, swap the
-> stubs for real calls — no endpoint signatures change.
+> **Current status (deployed & verified):** The platform is **live end-to-end**.
+> The RAG layer (retrieval + LLM generation — see
+> [docs/RAG_ARCHITECTURE.md](docs/RAG_ARCHITECTURE.md)) and the three **trained
+> classifiers are integrated and running in production** (safety, topic, language;
+> loaded from `models/*.pkl`). Kinyarwanda retrieval uses a dedicated bge-m3 index.
+> Held-out evaluation, load, bandwidth, e2e and deployment tests are in
+> [`testing/`](testing/README.md).
+>
+> **Live:** frontend → https://srh-frontend.vercel.app · backend →
+> https://srh-backend-api.onrender.com/api/v1/health
+> · **Demo video:** _add link here_
 
 ---
 
@@ -51,9 +74,10 @@ SRH-BACKEND-API (FastAPI)
 │   ├── /api/v1/admin        → Knowledge base management (admin only)
 │   └── /api/v1/health       → Liveness / readiness probe
 │
-├── ML Integration Layer (stubs → real models)
-│   ├── safety_classifier.py → Calls Model 1 (safe/unsafe binary)
-│   ├── topic_classifier.py  → Calls Model 3 (7-class SRH topic)
+├── ML Integration Layer (trained models, deployed)
+│   ├── safety_classifier.py → Model 1 (safe/unsafe binary) + bilingual rule pre-filter
+│   ├── topic_classifier.py  → Model 3 (7-class SRH topic)
+│   ├── language_classifier.py → Model 2 (KN/EN) → per-language retrieval routing
 │   └── conversational_agent.py → RAG retrieval + LLM generation
 │
 ├── Data Layer
@@ -176,28 +200,22 @@ Admin routes require a bearer token. Use environment variable `ADMIN_API_KEY`.
 
 ### Current State
 
-The **RAG layer is implemented** (retrieval + LLM generation, bilingual, with a
-Pinecone/Chroma vector store and the multilingual embedding model). The two
-input classifiers still return mock data until **SRH-ML-MODEL** delivers them:
+The full pipeline is **implemented and deployed**. All three trained classifiers load from
+`models/*.pkl` via `app/ml/model_registry.py` and run in production; the RAG layer (retrieval
++ LLM generation, bilingual, Pinecone/Chroma) is live.
 
 ```python
-# app/ml/safety_classifier.py  — STUB (Model 1)
-def classify_safety(text: str) -> dict:
-    # TODO: replace with real model call
-    return {"label": 0, "score": 0.95}  # 0 = SAFE
-
-# app/ml/topic_classifier.py   — STUB (Model 3)
-def classify_topic(text: str) -> dict:
-    # TODO: replace with real model call
-    return {"label": 1, "topic": "sti_hiv", "score": 0.88}
-
-# app/ml/language_classifier.py — proxy (Model 2): langdetect + rw heuristic
-# app/ml/embeddings.py          — IMPLEMENTED: SRHEmbeddingModel + retrieve_context()
-# app/ml/conversational_agent.py — IMPLEMENTED: SRHConversationalAgent (RAG + LLM)
+# app/ml/safety_classifier.py   — Model 1: bilingual rule pre-filter → XGBoost (safe/unsafe)
+# app/ml/topic_classifier.py    — Model 3: 7-class SRH topic (XGBoost)
+# app/ml/language_classifier.py — Model 2: KN/EN char-n-gram LogReg (+ heuristic fallback)
+# app/ml/embeddings.py          — SRHEmbeddingModel + retrieve_context() (EN MiniLM / RW bge-m3)
+# app/ml/conversational_agent.py — SRHConversationalAgent (RAG + Qwen2.5-7B via HF)
 ```
 
-See [docs/RAG_ARCHITECTURE.md](docs/RAG_ARCHITECTURE.md) for the retrieval
-strategy, safety system prompt, ingestion pipeline, and configuration.
+Each classifier falls back to a safe default only if its `.pkl` is absent (keeps CI green).
+Held-out evaluation of these exact artifacts: [`testing/ml-eval/`](testing/ml-eval/results/efficacy_results.md).
+See [docs/RAG_ARCHITECTURE.md](docs/RAG_ARCHITECTURE.md) for the retrieval strategy, safety
+system prompt, ingestion pipeline, and configuration.
 
 ### Model 1 — Safety Classifier
 
@@ -282,7 +300,15 @@ CREATE TABLE knowledge_entries (
 
 ---
 
-## Folder Structure (Suggested)
+## Related files & repo map
+
+**Key files & docs**
+- [`app/main.py`](app/main.py) — FastAPI app + router registration · [`app/config.py`](app/config.py) — settings
+- [`app/ml/`](app/ml/) — classifiers + RAG agent · [`app/services/`](app/services/) — vector store, ingestion, sessions
+- [`models/`](models/) — trained `.pkl` classifiers (+ `*_metadata.json`)
+- [`render.yaml`](render.yaml), [`Dockerfile`](Dockerfile) — deployment · [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — deployment plan
+- [`docs/RAG_ARCHITECTURE.md`](docs/RAG_ARCHITECTURE.md) — RAG design · [`testing/`](testing/README.md) — full V&V suite + evidence
+- **Sibling repos:** [SRH-FRONTEND](https://github.com/ICYEZAGATORE/srh-frontend) (PWA) · [SRH-ML-MODEL](https://github.com/ICYEZAGATORE/srh-ml-model) (training + data + proposal)
 
 ```
 srh-backend-api/
@@ -298,10 +324,11 @@ srh-backend-api/
 │   │   ├── admin.py
 │   │   └── health.py
 │   ├── ml/
-│   │   ├── safety_classifier.py    # Stub → real model
-│   │   ├── topic_classifier.py     # Stub → real model
-│   │   ├── conversational_agent.py # Stub → RAG + LLM
-│   │   └── embeddings.py           # Vector DB query wrapper
+│   │   ├── safety_classifier.py    # Model 1 (rule pre-filter + XGBoost)
+│   │   ├── topic_classifier.py     # Model 3 (7-class XGBoost)
+│   │   ├── language_classifier.py  # Model 2 (KN/EN LogReg)
+│   │   ├── conversational_agent.py # RAG + LLM (Qwen2.5-7B via HF)
+│   │   └── embeddings.py           # Vector DB query wrapper (EN MiniLM / RW bge-m3)
 │   ├── services/
 │   │   ├── tts_service.py
 │   │   ├── session_service.py
@@ -349,8 +376,8 @@ EMBEDDING_DIM=384
 
 # LLM generation (HuggingFace Inference API)
 HF_API_TOKEN=your-hf-token
-LLM_MODEL=mistralai/Mistral-7B-Instruct-v0.3
-DEFAULT_LLM_MODEL=mistralai/Mistral-7B-Instruct-v0.3
+LLM_MODEL=Qwen/Qwen2.5-7B-Instruct
+DEFAULT_LLM_MODEL=Qwen/Qwen2.5-7B-Instruct
 LLM_MAX_NEW_TOKENS=300
 LLM_TIMEOUT_SECONDS=30
 OPENAI_API_KEY=            # optional — GPT-4o benchmark reference only
@@ -369,42 +396,84 @@ LOG_UNSAFE_TEXT=false
 
 ---
 
-## Getting Started
+## Install & run (step by step)
 
-### Prerequisites
-- Python >= 3.10
-- PostgreSQL running locally
-- Docker (recommended)
+> Prefer to just **use it**? The live app is at https://srh-frontend.vercel.app — no setup.
+> The steps below run the backend API locally.
 
-### Local Development
+**Prerequisites:** Python ≥ 3.10, PostgreSQL (local) or SQLite (default), Git. Docker optional.
 
+**Steps:**
 ```bash
-git clone https://github.com/<your-org>/SRH-BACKEND-API.git
-cd SRH-BACKEND-API
+# 1. Clone
+git clone https://github.com/ICYEZAGATORE/srh-backend-api.git
+cd srh-backend-api
+
+# 2. Create + activate a virtual environment
 python -m venv venv
-source venv/bin/activate
+source venv/bin/activate          # Windows: venv\Scripts\activate
+
+# 3. Install dependencies
 pip install -r requirements.txt
-cp .env.example .env            # Fill in your values
-alembic upgrade head             # Run DB migrations
-uvicorn app.main:app --reload    # Runs on http://localhost:8000
+
+# 4. Configure environment (fill in values; SQLite works out of the box for local dev)
+cp .env.example .env
+
+# 5. Run database migrations
+alembic upgrade head
+
+# 6. Start the API
+uvicorn app.main:app --reload     # http://localhost:8000
 ```
+- **7. Verify:** open the interactive API docs at **http://localhost:8000/docs**, or
+  `curl http://localhost:8000/api/v1/health` → `{"status":"ok"}`.
+- To exercise the full RAG+LLM chat path, set `HF_API_TOKEN` and the vector-store keys in `.env`
+  (see [Environment Variables](#environment-variables)); without them the API still runs and
+  returns safe fallbacks.
 
-Swagger UI available at: `http://localhost:8000/docs`
-
-### Running with Docker
-
+**Run with Docker:**
 ```bash
 docker build -t srh-backend .
 docker run -p 8000:8000 --env-file .env srh-backend
 ```
 
-### Running Tests
-
+**Run the tests:**
 ```bash
-pytest tests/ -v
+pytest tests/ -v                  # backend unit/integration tests
+# System-wide V&V (e2e, load, ML eval, bandwidth): see testing/README.md
 ```
 
 ---
+
+## Testing
+
+A full system testing & V&V suite lives in [`testing/`](testing/README.md), organised
+modularly by category, run against the **deployed** apps. See
+[`testing/README.md`](testing/README.md) for reproduce commands and evidence locations.
+
+| Category | Location | Headline result |
+|---|---|---|
+| Requirements traceability | [`testing/00-traceability/`](testing/00-traceability/requirements_traceability.md) | proposal ↔ delivered, gaps disclosed |
+| Functional / e2e (Playwright) | [`testing/e2e/`](testing/e2e/RESULTS.md) | journeys pass; safety false-positive found |
+| Performance vs budgets | [`testing/performance/`](testing/performance/results/perf_api_results.md) | chat p95 4.25 s (pass); health p95 miss |
+| Low-bandwidth table | [`testing/network-bandwidth/`](testing/network-bandwidth/results/bandwidth_results.md) | completes 50/10/2 Mbps + Slow 3G |
+| Scalability (Locust, ≤10 users) | [`testing/locust/`](testing/locust/RESULTS.md) | 0.00% errors at 10 users |
+| ML accuracy + convergence | [`testing/ml-eval/`](testing/ml-eval/results/efficacy_results.md) | baselines reproduce; models converge |
+| Usability + accessibility | [`testing/usability/`](testing/usability/RESULTS.md) | jest-axe 0 violations |
+
+Backend unit tests: `pytest tests/`. Frontend: `cd ../srh-frontend && npx vitest run`.
+
+Analysis / Discussion / Recommendations (draft for supervisor sign-off):
+[`testing/DRAFT_analysis_discussion_recommendations.md`](testing/DRAFT_analysis_discussion_recommendations.md).
+
+## Deployment
+
+Full plan, tools, environments, and verification evidence:
+**[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
+
+- Backend → **Render** (Docker, `render.yaml` blueprint, auto-deploy on push to `main`).
+- Frontend → **Vercel** (`vercel --prod` or Git integration).
+- Verified live end-to-end (fresh visit → real chat exchange), not just health checks.
 
 ## Security Notes
 
@@ -416,26 +485,22 @@ pytest tests/ -v
 
 ---
 
-## Updating When ML Models Are Ready
+## Retraining / Updating ML Models
 
-The RAG layer (embeddings, vector store, conversational agent) is already wired
-— see [docs/RAG_ARCHITECTURE.md](docs/RAG_ARCHITECTURE.md). What remains is
-swapping the three classifier stubs for trained models:
+The three classifiers are **already integrated and deployed** (`models/*.pkl`, loaded via
+`app/ml/model_registry.py` and used by `safety_classifier.py`, `topic_classifier.py`,
+`language_classifier.py`). To retrain or replace them:
 
-1. Copy `.pkl` files or model directories into `./models/`
-2. Add the model path(s) to `.env`
-3. Replace the stub bodies in `app/ml/safety_classifier.py`,
-   `app/ml/topic_classifier.py`, and `app/ml/language_classifier.py` with real
-   `joblib.load()` + `model.predict()` calls (keep the return shapes)
-4. Pick the LLM: run `notebooks/llm_benchmark.ipynb` and set the winner in
-   `DEFAULT_LLM_MODEL` / `LLM_MODEL`
-5. Run `pytest tests/` to verify no regressions
-6. Redeploy
+1. Retrain in **SRH-ML-MODEL** (notebooks under `notebooks/`) and export new `.pkl` files.
+2. Copy them into `./models/` (keep the same filenames or update the paths in `.env`).
+3. Re-run held-out evaluation: `venv/Scripts/python.exe testing/ml-eval/evaluate_efficacy.py`
+   and compare against the recorded baselines.
+4. Run `pytest tests/` to verify no regressions, then redeploy (push to `main`).
 
-**No endpoint signatures need to change.** The frontend integration remains intact.
+**No endpoint signatures change.** Pin scikit-learn / XGBoost to the training versions to
+avoid unpickle drift (see the metadata `*_metadata.json`).
 
 ---
 
 ## Contributing
 
-This project is part of an ALU BSc Software Engineering capstone. Open a PR with a description. Backend PRs must include passing Pytest tests. For DB schema changes, include an Alembic migration file.

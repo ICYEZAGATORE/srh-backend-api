@@ -1,0 +1,253 @@
+{
+  "safety": {
+    "name": "safety",
+    "n": 750,
+    "accuracy": 0.7866666666666666,
+    "f1_macro": 0.7846822987317787,
+    "report": {
+      "safe": {
+        "precision": 0.7404921700223713,
+        "recall": 0.8826666666666667,
+        "f1-score": 0.805352798053528,
+        "support": 375.0
+      },
+      "unsafe": {
+        "precision": 0.8547854785478548,
+        "recall": 0.6906666666666667,
+        "f1-score": 0.7640117994100295,
+        "support": 375.0
+      },
+      "accuracy": 0.7866666666666666,
+      "macro avg": {
+        "precision": 0.7976388242851131,
+        "recall": 0.7866666666666666,
+        "f1-score": 0.7846822987317787,
+        "support": 750.0
+      },
+      "weighted avg": {
+        "precision": 0.797638824285113,
+        "recall": 0.7866666666666666,
+        "f1-score": 0.7846822987317789,
+        "support": 750.0
+      }
+    },
+    "confusion": [
+      [
+        331,
+        44
+      ],
+      [
+        116,
+        259
+      ]
+    ],
+    "classes": [
+      "safe",
+      "unsafe"
+    ],
+    "baseline": {
+      "accuracy": 0.7867,
+      "f1_unsafe": 0.764,
+      "recall_unsafe": 0.6907,
+      "precision_unsafe": 0.8548,
+      "f1_macro": 0.7847,
+      "roc_auc": 0.8702
+    }
+  },
+  "topic": {
+    "name": "topic",
+    "n": 1632,
+    "accuracy": 0.96875,
+    "f1_macro": 0.8793672399273398,
+    "report": {
+      "contraception": {
+        "precision": 0.9571428571428572,
+        "recall": 0.9852941176470589,
+        "f1-score": 0.9710144927536232,
+        "support": 340.0
+      },
+      "sti_hiv": {
+        "precision": 0.9791666666666666,
+        "recall": 0.9676470588235294,
+        "f1-score": 0.9733727810650887,
+        "support": 340.0
+      },
+      "pregnancy": {
+        "precision": 0.9646017699115044,
+        "recall": 0.9589442815249267,
+        "f1-score": 0.961764705882353,
+        "support": 341.0
+      },
+      "puberty": {
+        "precision": 0.9691119691119691,
+        "recall": 0.9766536964980544,
+        "f1-score": 0.9728682170542635,
+        "support": 257.0
+      },
+      "gbv_consent": {
+        "precision": 0.8571428571428571,
+        "recall": 0.8571428571428571,
+        "f1-score": 0.8571428571428571,
+        "support": 7.0
+      },
+      "disability_srh": {
+        "precision": 1.0,
+        "recall": 0.2857142857142857,
+        "f1-score": 0.4444444444444444,
+        "support": 7.0
+      },
+      "general_srh": {
+        "precision": 0.976401179941003,
+        "recall": 0.9735294117647059,
+        "f1-score": 0.9749631811487481,
+        "support": 340.0
+      },
+      "accuracy": 0.96875,
+      "macro avg": {
+        "precision": 0.9576524714166939,
+        "recall": 0.8578465298736312,
+        "f1-score": 0.8793672399273398,
+        "support": 1632.0
+      },
+      "weighted avg": {
+        "precision": 0.9689415556843003,
+        "recall": 0.96875,
+        "f1-score": 0.9679406631672031,
+        "support": 1632.0
+      }
+    },
+    "confusion": [
+      [
+        335,
+        0,
+        1,
+        4,
+        0,
+        0,
+        0
+      ],
+      [
+        2,
+        329,
+        5,
+        0,
+        1,
+        0,
+        3
+      ],
+      [
+        7,
+        1,
+        327,
+        4,
+        0,
+        0,
+        2
+      ],
+      [
+        3,
+        0,
+        1,
+        251,
+        0,
+        0,
+        2
+      ],
+      [
+        1,
+        0,
+        0,
+        0,
+        6,
+        0,
+        0
+      ],
+      [
+        1,
+        1,
+        2,
+        0,
+        0,
+        2,
+        1
+      ],
+      [
+        1,
+        5,
+        3,
+        0,
+        0,
+        0,
+        331
+      ]
+    ],
+    "classes": [
+      "contraception",
+      "sti_hiv",
+      "pregnancy",
+      "puberty",
+      "gbv_consent",
+      "disability_srh",
+      "general_srh"
+    ],
+    "baseline": {
+      "accuracy": 0.9693,
+      "f1_macro": 0.9628,
+      "f1_weighted": 0.9692,
+      "roc_auc_ovr": 0.9985
+    }
+  },
+  "language": {
+    "name": "language",
+    "n": 1800,
+    "accuracy": 1.0,
+    "f1_macro": 1.0,
+    "report": {
+      "english": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 900.0
+      },
+      "kinyarwanda": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 900.0
+      },
+      "accuracy": 1.0,
+      "macro avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 1800.0
+      },
+      "weighted avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 1800.0
+      }
+    },
+    "confusion": [
+      [
+        900,
+        0
+      ],
+      [
+        0,
+        900
+      ]
+    ],
+    "classes": [
+      "english",
+      "kinyarwanda"
+    ],
+    "baseline": {
+      "accuracy": 1.0,
+      "f1_binary": 1.0,
+      "f1_macro": 1.0,
+      "roc_auc": 1.0
+    }
+  }
+}

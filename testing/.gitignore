@@ -1,0 +1,16 @@
+# Node / Playwright
+node_modules/
+e2e/results/artifacts/
+e2e/results/html/trace/
+test-results/
+
+# Python
+__pycache__/
+*.pyc
+
+# Keep committed as evidence (do NOT ignore):
+#   e2e/results/evidence/**  (screenshots + response captures)
+#   e2e/results/html/**      (Playwright HTML report)
+#   locust/results/**        (HTML + CSV)
+#   ml-eval/results/**       (tables + plots)
+#   network-bandwidth/results/**, performance/results/**

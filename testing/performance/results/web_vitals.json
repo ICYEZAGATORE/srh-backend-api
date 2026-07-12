@@ -1,0 +1,50 @@
+[
+  {
+    "page": "landing",
+    "cpu_rate": 1,
+    "fcp_ms": 1640,
+    "lcp_ms": 2108,
+    "domInteractive_ms": 503,
+    "load_ms": 1264
+  },
+  {
+    "page": "landing",
+    "cpu_rate": 4,
+    "fcp_ms": null,
+    "lcp_ms": null,
+    "domInteractive_ms": 735,
+    "load_ms": 1774
+  },
+  {
+    "page": "landing",
+    "cpu_rate": 6,
+    "fcp_ms": null,
+    "lcp_ms": null,
+    "domInteractive_ms": 1288,
+    "load_ms": 3361
+  },
+  {
+    "page": "chat",
+    "cpu_rate": 1,
+    "fcp_ms": 1416,
+    "lcp_ms": 1416,
+    "domInteractive_ms": 414,
+    "load_ms": 1109
+  },
+  {
+    "page": "chat",
+    "cpu_rate": 4,
+    "fcp_ms": null,
+    "lcp_ms": null,
+    "domInteractive_ms": 669,
+    "load_ms": 2149
+  },
+  {
+    "page": "chat",
+    "cpu_rate": 6,
+    "fcp_ms": 11948,
+    "lcp_ms": 11948,
+    "domInteractive_ms": 1198,
+    "load_ms": 2880
+  }
+]

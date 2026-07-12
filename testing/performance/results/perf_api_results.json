@@ -1,0 +1,39 @@
+{
+  "base": "https://srh-backend-api.onrender.com/api/v1",
+  "budgets": {
+    "health_p95_ms": 1000,
+    "chat_p95_ms": 15000,
+    "cold_start_s": 90,
+    "chat_err_rate": 0.05
+  },
+  "health": {
+    "n": 30,
+    "p50_ms": 1418,
+    "p95_ms": 2130,
+    "p99_ms": 2317,
+    "min_ms": 1204,
+    "max_ms": 2317,
+    "mean_ms": 1521,
+    "errors": 0,
+    "timeouts": 0,
+    "error_rate": 0.0,
+    "timeout_rate": 0.0,
+    "throughput_rps": 0.657,
+    "cold_start_ms": 1581
+  },
+  "chat": {
+    "n": 20,
+    "p50_ms": 1885,
+    "p95_ms": 4251,
+    "p99_ms": 6626,
+    "min_ms": 1472,
+    "max_ms": 6626,
+    "mean_ms": 2516,
+    "errors": 0,
+    "timeouts": 0,
+    "error_rate": 0.0,
+    "timeout_rate": 0.0,
+    "throughput_rps": 0.397,
+    "cold_start_ms": 6626
+  }
+}

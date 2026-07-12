@@ -1,0 +1,8 @@
+[
+  {
+    "ts": "2026-07-12T21:15:10.243Z",
+    "case": "empty_input",
+    "pass": true,
+    "note": "Send is disabled for blank/whitespace input — no bad request reaches the backend."
+  }
+]

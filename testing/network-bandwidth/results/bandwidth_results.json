@@ -1,0 +1,38 @@
+[
+  {
+    "profile": "50 Mbps (broadband)",
+    "completed": true,
+    "shell_ms": 3347,
+    "answer_ms": 1082,
+    "timedOut": false,
+    "error": null,
+    "notes": "Loading spinner shown throughout; answer rendered — cold start distinguishable from a hang because the spinner stays active (not frozen)."
+  },
+  {
+    "profile": "10 Mbps (typical 4G)",
+    "completed": true,
+    "shell_ms": 3029,
+    "answer_ms": 1779,
+    "timedOut": false,
+    "error": null,
+    "notes": "Loading spinner shown throughout; answer rendered — cold start distinguishable from a hang because the spinner stays active (not frozen)."
+  },
+  {
+    "profile": "2 Mbps (weak 4G/3G)",
+    "completed": true,
+    "shell_ms": 3145,
+    "answer_ms": 1304,
+    "timedOut": false,
+    "error": null,
+    "notes": "Loading spinner shown throughout; answer rendered — cold start distinguishable from a hang because the spinner stays active (not frozen)."
+  },
+  {
+    "profile": "Slow 3G",
+    "completed": true,
+    "shell_ms": 5051,
+    "answer_ms": 2535,
+    "timedOut": false,
+    "error": null,
+    "notes": "Loading spinner shown throughout; answer rendered — cold start distinguishable from a hang because the spinner stays active (not frozen)."
+  }
+]
