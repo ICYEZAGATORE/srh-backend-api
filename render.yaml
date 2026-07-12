@@ -49,6 +49,15 @@ services:
         sync: false
       - key: PINECONE_INDEX_NAME
         value: srh-knowledge-base
+      # Kinyarwanda uses a stronger multilingual embedder (bge-m3, 1024-d) in its
+      # own Pinecone index; English stays on MiniLM (384-d, index above). Queries
+      # are routed by detected language in retrieve_context.
+      - key: RW_EMBEDDING_MODEL
+        value: BAAI/bge-m3
+      - key: RW_EMBEDDING_DIM
+        value: "1024"
+      - key: RW_PINECONE_INDEX_NAME
+        value: srh-knowledge-base-rw
       # Allow the deployed frontend origin (CORS). Comma-separated for multiples.
       - key: CORS_ALLOW_ORIGINS
         value: https://srh-frontend.vercel.app

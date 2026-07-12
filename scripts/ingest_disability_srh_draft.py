@@ -37,7 +37,7 @@ try:
 except Exception:  # noqa: BLE001
     pass
 
-from app.services.ingestion import _hash, clean_text, ingest_chunks
+from app.services.ingestion import _hash, clean_text, ingest_rw_chunks
 
 SOURCE = "machine_drafted_disability_srh"
 
@@ -127,7 +127,7 @@ def main() -> None:
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
-        rep = ingest_chunks(chunks, db)
+        rep = ingest_rw_chunks(chunks, db)
         print(f"ingested={rep['ingested']} skipped={rep['skipped']} "
               f"per_topic={rep['per_topic']}")
     finally:

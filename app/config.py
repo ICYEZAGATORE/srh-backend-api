@@ -75,6 +75,18 @@ class Settings(BaseSettings):
     # HF Inference API, and by the LLM layer / benchmark).
     HF_API_TOKEN: str = ""
 
+    # ── RAG: Kinyarwanda embedder (English path above is UNCHANGED) ──────────
+    # The English MiniLM embedder (EMBEDDING_MODEL, 384-d) discriminates
+    # Kinyarwanda poorly. bge-m3 (1024-d, built for 100+ languages incl.
+    # low-resource) is far better for rw retrieval (validated). Its dimension
+    # differs from the English index, so rw vectors live in a SEPARATE Pinecone
+    # index and rw queries are embedded + searched via this model. Both models
+    # run under the same EMBEDDING_BACKEND (hf_api on Render; both are served by
+    # the HF feature-extraction API).
+    RW_EMBEDDING_MODEL: str = "BAAI/bge-m3"
+    RW_EMBEDDING_DIM: int = 1024
+    RW_PINECONE_INDEX_NAME: str = "srh-knowledge-base-rw"
+
     # ── RAG: vector store ───────────────────────────────────────────────────
     # "pinecone" (cloud) or "chroma" (local dev / CI, no API key required).
     VECTOR_STORE_BACKEND: str = "pinecone"

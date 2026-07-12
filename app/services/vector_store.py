@@ -79,21 +79,22 @@ class VectorStoreClient(ABC):
 class PineconeVectorStore(VectorStoreClient):
     """Serverless Pinecone backend (modern ``pinecone`` SDK, v3+)."""
 
-    def __init__(self) -> None:
+    def __init__(self, index_name: str | None = None, dim: int | None = None) -> None:
         from pinecone import Pinecone, ServerlessSpec
 
         if not settings.PINECONE_API_KEY:
             raise RuntimeError("PINECONE_API_KEY is not set.")
         self._pc = Pinecone(api_key=settings.PINECONE_API_KEY)
-        self._index_name = settings.PINECONE_INDEX_NAME
+        self._index_name = index_name or settings.PINECONE_INDEX_NAME
+        dim = dim or settings.EMBEDDING_DIM
 
         existing = {i["name"] for i in self._pc.list_indexes()}
         if self._index_name not in existing:
             logger.info("Creating Pinecone index '%s' (dim=%s, cosine).",
-                        self._index_name, settings.EMBEDDING_DIM)
+                        self._index_name, dim)
             self._pc.create_index(
                 name=self._index_name,
-                dimension=settings.EMBEDDING_DIM,
+                dimension=dim,
                 metric="cosine",
                 spec=ServerlessSpec(
                     cloud=settings.PINECONE_CLOUD, region=settings.PINECONE_REGION
@@ -139,14 +140,15 @@ class PineconeVectorStore(VectorStoreClient):
 class ChromaVectorStore(VectorStoreClient):
     """Embedded ChromaDB backend, persisted to ``CHROMA_PERSIST_DIR``."""
 
-    def __init__(self, persist_dir: Optional[str] = None) -> None:
+    def __init__(self, persist_dir: Optional[str] = None,
+                 collection_name: Optional[str] = None) -> None:
         import chromadb
 
         self._client = chromadb.PersistentClient(
             path=persist_dir or settings.CHROMA_PERSIST_DIR
         )
         self._collection = self._client.get_or_create_collection(
-            name=settings.PINECONE_INDEX_NAME,
+            name=collection_name or settings.PINECONE_INDEX_NAME,
             metadata={"hnsw:space": "cosine"},
         )
 
@@ -194,26 +196,43 @@ class ChromaVectorStore(VectorStoreClient):
 
 
 # ── Factory / singleton ─────────────────────────────────────────────────────
-_store: VectorStoreClient | None = None
+_stores: "dict[str, VectorStoreClient]" = {}
 _lock = threading.Lock()
 
 
-def get_vector_store() -> VectorStoreClient:
-    """Return the active vector store singleton (backend chosen by config)."""
-    global _store
-    if _store is None:
+def _make_store(index_name: str, dim: int) -> VectorStoreClient:
+    backend = (settings.VECTOR_STORE_BACKEND or "chroma").lower()
+    if backend == "pinecone":
+        return PineconeVectorStore(index_name=index_name, dim=dim)
+    return ChromaVectorStore(collection_name=index_name)
+
+
+def get_vector_store(
+    index_name: str | None = None, dim: int | None = None
+) -> VectorStoreClient:
+    """Return the vector store for an index (English default), cached per index.
+
+    Different indexes (English 384-d, Kinyarwanda 1024-d) get independent
+    singletons keyed by index name.
+    """
+    key = index_name or settings.PINECONE_INDEX_NAME
+    store = _stores.get(key)
+    if store is None:
         with _lock:
-            if _store is None:
-                backend = (settings.VECTOR_STORE_BACKEND or "chroma").lower()
-                if backend == "pinecone":
-                    _store = PineconeVectorStore()
-                else:
-                    _store = ChromaVectorStore()
-                logger.info("Vector store backend: %s", backend)
-    return _store
+            store = _stores.get(key)
+            if store is None:
+                store = _make_store(key, dim or settings.EMBEDDING_DIM)
+                _stores[key] = store
+                logger.info("Vector store backend=%s index=%s",
+                            settings.VECTOR_STORE_BACKEND, key)
+    return store
+
+
+def get_rw_vector_store() -> VectorStoreClient:
+    """Vector store for the Kinyarwanda index (bge-m3, 1024-d)."""
+    return get_vector_store(settings.RW_PINECONE_INDEX_NAME, settings.RW_EMBEDDING_DIM)
 
 
 def reset_vector_store() -> None:
-    """Drop the cached singleton (used by tests to switch backends)."""
-    global _store
-    _store = None
+    """Drop cached store singletons (used by tests to switch backends)."""
+    _stores.clear()

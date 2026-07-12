@@ -48,12 +48,12 @@ class SRHEmbeddingModel:
     ``EmbeddingUnavailableError`` with a clear message instead.
     """
 
-    _instance: "SRHEmbeddingModel | None" = None
+    _instances: "dict[str, SRHEmbeddingModel]" = {}
     _lock = threading.Lock()
 
-    def __init__(self) -> None:
-        self.model_name: str = settings.EMBEDDING_MODEL
-        self.dim: int = settings.EMBEDDING_DIM
+    def __init__(self, model_name: str | None = None, dim: int | None = None) -> None:
+        self.model_name: str = model_name or settings.EMBEDDING_MODEL
+        self.dim: int = dim or settings.EMBEDDING_DIM
         self._backend: str = "uninitialised"
         self._local_model = None
         self._hf_client = None
@@ -61,13 +61,23 @@ class SRHEmbeddingModel:
 
     # ── construction ────────────────────────────────────────────────────────
     @classmethod
-    def instance(cls) -> "SRHEmbeddingModel":
-        """Return the process-wide singleton, constructing it once."""
-        if cls._instance is None:
+    def instance(
+        cls, model_name: str | None = None, dim: int | None = None
+    ) -> "SRHEmbeddingModel":
+        """Return a per-model singleton, constructing each distinct model once.
+
+        Keyed by model name so English (MiniLM) and Kinyarwanda (bge-m3) can
+        coexist as independent singletons.
+        """
+        key = model_name or settings.EMBEDDING_MODEL
+        inst = cls._instances.get(key)
+        if inst is None:
             with cls._lock:
-                if cls._instance is None:
-                    cls._instance = cls()
-        return cls._instance
+                inst = cls._instances.get(key)
+                if inst is None:
+                    inst = cls(key, dim)
+                    cls._instances[key] = inst
+        return inst
 
     def _load(self) -> None:
         mode = (settings.EMBEDDING_BACKEND or "auto").lower()
@@ -164,8 +174,15 @@ def _to_sentence_vector(vec) -> List[float]:
 
 
 def get_embedding_model() -> SRHEmbeddingModel:
-    """Convenience accessor for the singleton embedding model."""
+    """Accessor for the English (default) embedding model singleton."""
     return SRHEmbeddingModel.instance()
+
+
+def get_rw_embedding_model() -> SRHEmbeddingModel:
+    """Accessor for the Kinyarwanda embedding model (bge-m3; separate index)."""
+    return SRHEmbeddingModel.instance(
+        settings.RW_EMBEDDING_MODEL, settings.RW_EMBEDDING_DIM
+    )
 
 
 # ── Router-facing retrieval wrapper (STABLE signature) ──────────────────────
@@ -186,10 +203,17 @@ def retrieve_context(
     endpoint stays available and the agent can emit its safe fallback.
     """
     try:
-        from app.services.vector_store import get_vector_store
+        from app.services.vector_store import get_rw_vector_store, get_vector_store
 
-        emb = get_embedding_model().embed_query(query)
-        store = get_vector_store()
+        # Kinyarwanda uses a stronger embedder (bge-m3) + its own index; English
+        # keeps the MiniLM embedder + English index. The query embedding and the
+        # index MUST use the same model, so route both together by language.
+        if lang == "rw":
+            emb = get_rw_embedding_model().embed_query(query)
+            store = get_rw_vector_store()
+        else:
+            emb = get_embedding_model().embed_query(query)
+            store = get_vector_store()
         flt: dict = {}
         if lang:
             flt["language"] = lang

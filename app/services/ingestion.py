@@ -177,13 +177,28 @@ def _cache_path(source: str) -> str:
     return os.path.join(KB_CACHE_DIR, f"{safe}.jsonl")
 
 
-def ingest_chunks(chunks: List[dict], db: SASession) -> dict:
+def ingest_chunks(
+    chunks: List[dict],
+    db: SASession,
+    embedder=None,
+    store=None,
+) -> dict:
     """Embed + upsert + persist new chunks. Idempotent by chunk hash.
+
+    ``embedder`` / ``store`` default to the English (MiniLM / default index)
+    singletons. Kinyarwanda seed scripts pass ``get_rw_embedding_model()`` +
+    ``get_rw_vector_store()`` (bge-m3, 1024-d, ``srh-knowledge-base-rw``) so the
+    English embedder and index are never touched.
 
     Returns a report: {ingested, skipped, per_topic, per_language, source}.
     """
     from app.ml.embeddings import get_embedding_model
     from app.services.vector_store import get_vector_store
+
+    if embedder is None:
+        embedder = get_embedding_model()
+    if store is None:
+        store = get_vector_store()
 
     report = {"ingested": 0, "skipped": 0, "per_topic": {}, "per_language": {}}
     if not chunks:
@@ -209,10 +224,10 @@ def ingest_chunks(chunks: List[dict], db: SASession) -> dict:
         return report
 
     # Embed + upsert to the vector store.
-    embeddings = get_embedding_model().embed_documents([c["text"] for c in new])
+    embeddings = embedder.embed_documents([c["text"] for c in new])
     for c, emb in zip(new, embeddings):
         c["embedding"] = emb
-    get_vector_store().upsert(new)
+    store.upsert(new)
 
     # Persist relational rows + JSONL cache.
     cache_lines = []
@@ -245,12 +260,27 @@ def ingest_chunks(chunks: List[dict], db: SASession) -> dict:
     return report
 
 
+def ingest_rw_chunks(chunks: List[dict], db: SASession) -> dict:
+    """Ingest Kinyarwanda chunks with the bge-m3 embedder + the RW index.
+
+    Thin wrapper over ``ingest_chunks`` that wires the Kinyarwanda embedder and
+    vector store, so RW seed scripts never risk hitting the English index.
+    """
+    from app.ml.embeddings import get_rw_embedding_model
+    from app.services.vector_store import get_rw_vector_store
+
+    return ingest_chunks(
+        chunks, db, embedder=get_rw_embedding_model(), store=get_rw_vector_store()
+    )
+
+
 def ingest_text_document(
     text: str, source: str, db: SASession, title: Optional[str] = None,
     default_topic: str = "general_srh", default_lang: Optional[str] = None,
+    embedder=None, store=None,
 ) -> dict:
     """Convenience: chunk a raw text document and ingest it in one call."""
     chunks = chunk_document(text, source, title, default_topic, default_lang)
-    report = ingest_chunks(chunks, db)
+    report = ingest_chunks(chunks, db, embedder=embedder, store=store)
     report["total_chunks"] = len(chunks)
     return report

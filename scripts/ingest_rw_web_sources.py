@@ -48,7 +48,7 @@ try:
 except Exception:  # noqa: BLE001
     pass
 
-from app.services.ingestion import chunk_document, ingest_chunks
+from app.services.ingestion import chunk_document, ingest_rw_chunks
 
 # (source_id, url, kind, default_topic, title)
 SOURCES: list[tuple[str, str, str, str, str]] = [
@@ -265,7 +265,7 @@ def main() -> None:
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
-        rep = ingest_chunks(chunks, db)
+        rep = ingest_rw_chunks(chunks, db)
         print("\nINGESTION REPORT")
         print(f"  ingested={rep['ingested']} skipped={rep['skipped']}")
         print(f"  per_topic={rep['per_topic']}")

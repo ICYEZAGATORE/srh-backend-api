@@ -926,7 +926,7 @@ def main() -> None:
     # Ensure the KnowledgeEntry table exists (dev convenience for sqlite).
     from app.database import Base, SessionLocal, engine
     from app import models  # noqa: F401  register tables
-    from app.services.ingestion import ingest_chunks
+    from app.services.ingestion import ingest_rw_chunks
     Base.metadata.create_all(bind=engine)
 
     db = SessionLocal()
@@ -935,8 +935,8 @@ def main() -> None:
         # per-document (ingest_chunks caches under the batch's first source).
         doc_a = [c for c in chunks if c["metadata"]["source"] == DOC_A_SOURCE]
         doc_b = [c for c in chunks if c["metadata"]["source"] == DOC_B_SOURCE]
-        rep_a = ingest_chunks(doc_a, db)
-        rep_b = ingest_chunks(doc_b, db)
+        rep_a = ingest_rw_chunks(doc_a, db)
+        rep_b = ingest_rw_chunks(doc_b, db)
         print("\nINGESTION REPORT")
         print(f"  Document A ({DOC_A_SOURCE}): ingested={rep_a['ingested']} "
               f"skipped={rep_a['skipped']} per_topic={rep_a['per_topic']}")
