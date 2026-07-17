@@ -247,16 +247,36 @@ def ingest_chunks(
         report["per_language"][meta["language"]] = (
             report["per_language"].get(meta["language"], 0) + 1
         )
-        cache_lines.append(json.dumps(
-            {"id": c["id"], "text": c["text"], **meta}, ensure_ascii=False
-        ))
+        cache_lines.append(
+            (c["id"], json.dumps(
+                {"id": c["id"], "text": c["text"], **meta}, ensure_ascii=False
+            ))
+        )
     db.commit()
 
     if new:
         src = new[0]["metadata"]["source"]
-        with open(_cache_path(src), "a", encoding="utf-8") as fh:
-            fh.write("\n".join(cache_lines) + "\n")
+        path = _cache_path(src)
+        # Idempotent append: a re-run (e.g. re-seeding against a fresh audit DB,
+        # which bypasses the DB-level chunk_hash uniqueness) must not duplicate
+        # rows already in the JSONL cache. Skip lines whose id is already present.
+        existing_ids: set = set()
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        existing_ids.add(json.loads(line).get("id"))
+                    except json.JSONDecodeError:
+                        continue
+        fresh = [ln for cid, ln in cache_lines if cid not in existing_ids]
+        if fresh:
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write("\n".join(fresh) + "\n")
         report["source"] = src
+        report["cache_duplicates_skipped"] = len(cache_lines) - len(fresh)
     return report
 
 

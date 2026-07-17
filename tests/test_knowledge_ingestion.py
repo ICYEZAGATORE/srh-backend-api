@@ -87,3 +87,35 @@ def test_ingestion_is_idempotent(db):
     assert second["skipped"] == second["total_chunks"] == first["total_chunks"]
     rows = db.scalar(select(func.count()).select_from(KnowledgeEntry))
     assert rows == first["ingested"]
+
+
+def _fresh_session():
+    engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+    Base.metadata.create_all(bind=engine)
+    return sessionmaker(bind=engine)()
+
+
+def test_jsonl_cache_append_is_idempotent_across_fresh_dbs(tmp_path, monkeypatch):
+    """Re-seeding against a FRESH audit DB (which bypasses the DB-level
+    chunk_hash uniqueness) must NOT duplicate rows in the JSONL cache file.
+
+    This is the root cause of the earlier 100-rows-for-50-pairs duplication:
+    two ingestion runs appended to the cache with no file-level dedup.
+    """
+    import app.services.ingestion as ingestion
+
+    monkeypatch.setattr(ingestion, "KB_CACHE_DIR", str(tmp_path))
+    text = _pdf_text(_make_pdf(SAMPLE))
+
+    first = ingestion.ingest_text_document(text, source="test.pdf", db=_fresh_session())
+    second = ingestion.ingest_text_document(text, source="test.pdf", db=_fresh_session())
+
+    # A fresh DB re-inserts (DB dedup can't see the prior run)...
+    assert first["ingested"] == second["ingested"] > 0
+    # ...but the cache file skips the already-present rows instead of doubling.
+    assert second["cache_duplicates_skipped"] == second["ingested"]
+    lines = [l for l in (tmp_path / "test.pdf.jsonl").read_text(encoding="utf-8")
+             .splitlines() if l.strip()]
+    assert len(lines) == first["ingested"]
