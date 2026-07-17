@@ -29,6 +29,7 @@ from app.ml.topic_classifier import classify_topic
 from app.models.query import Query
 from app.models.session import Session
 from app.schemas.chat import ChatRequest, ChatResponse
+from app.services.kinyarwanda_pipeline import RwResult, handle_kinyarwanda_query
 from app.services.moderation import get_fallback
 
 router = APIRouter(tags=["Chat"])
@@ -48,6 +49,54 @@ def _resolve_session_id(db: SASession, raw: str) -> uuid.UUID | None:
         return None
     exists = db.get(Session, sid) is not None
     return sid if exists else None
+
+
+def _finalize_rw(
+    db: SASession, query: Query, request: ChatRequest, result: RwResult
+) -> ChatResponse:
+    """Persist + return a Kinyarwanda response produced by the rw orchestrator.
+
+    Handles both a normal answer (FAQ hit or translate pipeline) and an
+    output-side safety block, mirroring the shared pipeline's persistence and
+    fallback shape. The new analytics flags are written to the query record.
+    """
+    query.topic = result.topic
+    query.faq_cache_hit = result.faq_cache_hit
+    query.low_confidence_translation = result.low_confidence_translation
+    query.pipeline_mode = result.pipeline_mode
+
+    # Output-side safety block -> same fallback contract as step 7.
+    if result.unsafe or not result.response_text:
+        query.safe = False
+        query.response = None
+        query.fallback = True
+        db.commit()
+
+        fb = get_fallback(request.lang)
+        return ChatResponse(
+            response=None,
+            safe=False,
+            topic=result.topic,
+            lang=request.lang,
+            fallback=True,
+            fallback_message=fb["fallback_message"],
+            referral=fb["referral"],
+        )
+
+    query.safe = True
+    query.response = result.response_text
+    query.fallback = False
+    db.commit()
+
+    return ChatResponse(
+        response=result.response_text,
+        safe=True,
+        topic=result.topic,
+        lang=request.lang,
+        fallback=False,
+        fallback_message=None,
+        referral=None,
+    )
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -98,6 +147,24 @@ def chat(request: ChatRequest, db: SASession = Depends(get_db)) -> ChatResponse:
             fallback_message=fb["fallback_message"],
             referral=fb["referral"],
         )
+
+    # 3b. Kinyarwanda-specific strategies run BEFORE the shared RAG steps:
+    #     the predefined-question FAQ cache, and (only when
+    #     KINYARWANDA_PIPELINE_MODE=translate) the rw→en→RAG→en→rw pipeline.
+    #     English queries never enter this branch, so their path is unchanged.
+    #     A None result means "fall through" to the existing native rw path
+    #     below (bge-m3 retrieval + direct rw generation); it is also what a
+    #     translate-pipeline failure returns, so a translation problem degrades
+    #     gracefully instead of erroring.
+    if detected_lang == "rw":
+        rw_result = handle_kinyarwanda_query(
+            request.message,
+            simplified=request.simplified,
+            session_id=str(session_id) if session_id else None,
+            db=db,
+        )
+        if rw_result is not None:
+            return _finalize_rw(db, query, request, rw_result)
 
     # 4. Topic classification.
     topic_result = classify_topic(request.message)

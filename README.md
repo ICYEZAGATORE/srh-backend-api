@@ -382,6 +382,18 @@ LLM_MAX_NEW_TOKENS=300
 LLM_TIMEOUT_SECONDS=30
 OPENAI_API_KEY=            # optional — GPT-4o benchmark reference only
 
+# Kinyarwanda pipeline (English path is unaffected by all of these)
+KINYARWANDA_PIPELINE_MODE=native        # "native" (default) | "translate"
+FAQ_CACHE_ENABLED=true                   # predefined-question FAQ cache for rw
+FAQ_SIMILARITY_THRESHOLD=0.90            # near-duplicate cosine cutoff
+FAQ_CACHE_PATH=data/faq_cache_rw.jsonl   # built by scripts/build_faq_cache.py
+TRANSLATION_PROVIDER=google              # google | nllb | digital_umuganda | none
+TRANSLATION_TIMEOUT_SECONDS=10
+BACK_TRANSLATION_SIMILARITY_THRESHOLD=0.75
+GOOGLE_TRANSLATE_API_KEY=                # secret — only for TRANSLATION_PROVIDER=google
+NLLB_ENDPOINT_URL=                       # hosted NLLB-200 endpoint (CC-BY-NC — non-commercial)
+DIGITAL_UMUGANDA_MODEL_ID=               # HF model id, if a licensed one is configured
+
 # Admin
 ADMIN_API_KEY=your-secret-admin-key
 
@@ -393,6 +405,46 @@ LOG_UNSAFE_TEXT=false
 
 > The canonical, always-current list lives in
 > [`.env.example`](.env.example) and [`app/config.py`](app/config.py).
+
+---
+
+## Kinyarwanda answer pipeline (FAQ cache + translate mode)
+
+Kinyarwanda (`rw`) queries can be answered by three strategies. **English is never
+affected** — none of this runs for `en` queries. The order for an `rw` query is:
+
+1. **FAQ cache** (`FAQ_CACHE_ENABLED=true`) — a high-similarity lookup against a
+   curated set of predefined rw question/answer pairs
+   ([`app/services/faq_cache.py`](app/services/faq_cache.py)). On a near-duplicate
+   hit (cosine ≥ `FAQ_SIMILARITY_THRESHOLD`) the pre-approved answer is returned
+   verbatim, skipping translation + LLM generation. Input-side safety + logging
+   still run first; the answer is re-checked by the output-side rule filter.
+   - Threshold **0.90 is deliberately conservative** (near-exact matches only). In
+     local checks an exact question scores `1.0`, a close paraphrase ~`0.80`, and
+     an unrelated question ~`0.43` — so expect a **low hit rate at 0.90**; lower it
+     toward ~`0.85` after reviewing real hit rates.
+   - The shipped cache is built from **unreviewed** rows (`approved=false`), so
+     every FAQ response is logged as `unreviewed` / low-confidence pending
+     clinical review. Rebuild the cache with:
+     `EMBEDDING_BACKEND=local python -m scripts.build_faq_cache`
+
+2. **Translate pipeline** (`KINYARWANDA_PIPELINE_MODE=translate`, on a FAQ miss) —
+   `rw → en →` the **existing English** topic/retrieval/generation path `→ en → rw`
+   ([`app/services/kinyarwanda_pipeline.py`](app/services/kinyarwanda_pipeline.py)).
+   Output-side safety is re-checked on the English response; a back-translation QA
+   check flags (never blocks) low-confidence results
+   (`low_confidence_translation`). Any translation failure/timeout **falls back to
+   the native path** — never a 500. Provider adapters (Google / NLLB / Digital
+   Umuganda) live in [`app/services/translation.py`](app/services/translation.py);
+   pick the winner with the offline harness
+   (`srh-ml-model/src/translation_benchmark.py`).
+
+3. **Native path** (default, `KINYARWANDA_PIPELINE_MODE=native`) — the current
+   bge-m3 retrieval on the `srh-knowledge-base-rw` index + direct rw generation.
+   Unchanged; this is what runs when the FAQ misses in `native` mode.
+
+Switch modes by flipping `KINYARWANDA_PIPELINE_MODE` (default `native` — **no
+behaviour change** unless you set it to `translate`).
 
 ---
 

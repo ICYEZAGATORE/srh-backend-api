@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { enterChat, ask, shot, record, flushEvidence } from './_helpers.js'
+import { enterChat, ask, shot, record, flushEvidence, switchLanguage } from './_helpers.js'
 
 // Step 1 (varied data): edge cases + safety + off-topic. Each case captures the
 // actual response as evidence and a short note on WHY it passed/failed.
@@ -44,6 +44,22 @@ test.describe('Varied-data functional testing (deployed)', () => {
       note: 'Code-switched EN/RW input is accepted and answered; captured for quality review.' })
     await shot(page, 'vd-mixed-language')
     flushEvidence('varied_mixed.json')
+  })
+
+  test('Kinyarwanda near-duplicate of a predefined question returns a substantive answer', async ({ page }) => {
+    // A near-exact match to a curated FAQ entry ("Ubugimbi n'ubwangavu ni iki?").
+    // With the FAQ cache deployed + KINYARWANDA_PIPELINE_MODE=native this is
+    // served from the pre-approved answer; without it, the native bge-m3 path
+    // answers. Either way a substantive rw answer (not the safe fallback) is
+    // expected — asserted leniently since we test the deployed default config.
+    await switchLanguage(page, 'Kinyarwanda')
+    const ans = await ask(page, "Ubugimbi n'ubwangavu ni iki?", { lang: 'rw' })
+    expect(ans.length).toBeGreaterThan(20)
+    record({ case: 'rw_faq_near_duplicate', pass: true, answer: ans.slice(0, 300),
+      note: 'Near-duplicate rw predefined question returns a substantive Kinyarwanda '
+          + 'answer (FAQ cache when enabled, else native rw retrieval); captured for review.' })
+    await shot(page, 'vd-rw-faq')
+    flushEvidence('varied_rw_faq.json')
   })
 
   test('known unsafe query is blocked by the safety layer (fallback + referral)', async ({ page }) => {

@@ -58,6 +58,33 @@ services:
         value: "1024"
       - key: RW_PINECONE_INDEX_NAME
         value: srh-knowledge-base-rw
+      # ── Kinyarwanda pipeline (English path unaffected) ───────────────────
+      # "native" (default) keeps the current bge-m3 rw retrieval + direct rw
+      # generation. Flip to "translate" to route rw via the English path
+      # (rw→en→RAG→en→rw); that requires a TRANSLATION_PROVIDER below.
+      - key: KINYARWANDA_PIPELINE_MODE
+        value: native
+      # FAQ cache: high-similarity lookup of curated rw Q&A before RAG. The
+      # cache file is built offline (scripts/build_faq_cache.py) and shipped in
+      # the image under data/; if absent the cache is simply a no-op.
+      - key: FAQ_CACHE_ENABLED
+        value: "true"
+      - key: FAQ_SIMILARITY_THRESHOLD
+        value: "0.90"
+      # Translation provider (used only when KINYARWANDA_PIPELINE_MODE=translate).
+      - key: TRANSLATION_PROVIDER
+        value: google
+      - key: TRANSLATION_TIMEOUT_SECONDS
+        value: "10"
+      - key: BACK_TRANSLATION_SIMILARITY_THRESHOLD
+        value: "0.75"
+      # Provider credentials — secrets, set manually in the dashboard.
+      - key: GOOGLE_TRANSLATE_API_KEY
+        sync: false
+      - key: NLLB_ENDPOINT_URL
+        sync: false
+      - key: DIGITAL_UMUGANDA_MODEL_ID
+        sync: false
       # Allow the deployed frontend origin (CORS). Comma-separated for multiples.
       - key: CORS_ALLOW_ORIGINS
         value: https://srh-frontend.vercel.app

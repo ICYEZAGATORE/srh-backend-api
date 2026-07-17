@@ -87,6 +87,55 @@ class Settings(BaseSettings):
     RW_EMBEDDING_DIM: int = 1024
     RW_PINECONE_INDEX_NAME: str = "srh-knowledge-base-rw"
 
+    # ── Kinyarwanda pipeline mode (English path is UNCHANGED) ────────────────
+    # Selects how Kinyarwanda (rw) queries are answered AFTER the FAQ cache:
+    #   "native"    — CURRENT behaviour: bge-m3 retrieval on the rw index +
+    #                 direct Kinyarwanda generation by the LLM (default; no
+    #                 behaviour change unless this flag is flipped).
+    #   "translate" — rw→en→(English RAG + generation)→en→rw. Reuses the English
+    #                 path so rw benefits from the richer English KB. Requires a
+    #                 working TRANSLATION_PROVIDER; on any failure it falls back
+    #                 to the "native" path (never a hard error to the user).
+    # English (en) queries never consult this flag.
+    KINYARWANDA_PIPELINE_MODE: str = "native"
+
+    @field_validator("KINYARWANDA_PIPELINE_MODE")
+    @classmethod
+    def _valid_rw_mode(cls, v: str) -> str:
+        v = (v or "native").strip().lower()
+        return v if v in ("native", "translate") else "native"
+
+    # ── FAQ cache (predefined Kinyarwanda Q&A; runs before RAG for rw) ───────
+    # A high-similarity lookup against curated rw question/answer pairs. On a
+    # near-duplicate hit the pre-approved answer is returned verbatim, skipping
+    # translation + LLM generation. Built offline by scripts/build_faq_cache.py
+    # into FAQ_CACHE_PATH (embeddings precomputed to avoid a startup embed storm
+    # on the free tier). Threshold is intentionally high — this must be a
+    # paraphrase/near-duplicate match, not a topic match. Tune after seeing real
+    # hit rates. Missing file / any error => cache is a no-op (never raises).
+    FAQ_CACHE_ENABLED: bool = True
+    FAQ_SIMILARITY_THRESHOLD: float = 0.90
+    FAQ_CACHE_PATH: str = "data/faq_cache_rw.jsonl"
+
+    # ── Translation provider (used only by KINYARWANDA_PIPELINE_MODE=translate)
+    # Provider-agnostic adapters live in app/services/translation.py. Adapters
+    # stay switchable; the offline harness (srh-ml-model) picks the winner.
+    #   "google" | "nllb" | "digital_umuganda" | "none"
+    TRANSLATION_PROVIDER: str = "google"
+    TRANSLATION_TIMEOUT_SECONDS: int = 10
+    # Back-translation QA: rw response is translated back to en and compared to
+    # the English-generated response. Below this cosine similarity the response
+    # is FLAGGED (low_confidence_translation) for later review — not blocked.
+    BACK_TRANSLATION_SIMILARITY_THRESHOLD: float = 0.75
+    # Provider credentials / endpoints (blank defaults; set via env, never hardcode).
+    GOOGLE_TRANSLATE_API_KEY: str = ""
+    # A hosted/managed NLLB-200 endpoint (e.g. an HF Inference Endpoint URL).
+    # Local GPU inference is NOT viable on the Render free tier, so NLLB is only
+    # usable here when a hosted endpoint is configured.
+    NLLB_ENDPOINT_URL: str = ""
+    # Digital Umuganda's published Kinyarwanda MT model id on HuggingFace, if any.
+    DIGITAL_UMUGANDA_MODEL_ID: str = ""
+
     # ── RAG: vector store ───────────────────────────────────────────────────
     # "pinecone" (cloud) or "chroma" (local dev / CI, no API key required).
     VECTOR_STORE_BACKEND: str = "pinecone"

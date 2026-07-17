@@ -33,6 +33,16 @@ class Query(Base):
     topic: Mapped[str | None] = mapped_column(String(50), nullable=True)
     response: Mapped[str | None] = mapped_column(Text, nullable=True)
     fallback: Mapped[bool] = mapped_column(Boolean, default=False)
+    # ── Kinyarwanda pipeline analytics (NULL/False for English queries) ──────
+    # Set when the predefined-question FAQ cache served this turn verbatim
+    # (skipping translation + LLM generation).
+    faq_cache_hit: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Set in KINYARWANDA_PIPELINE_MODE=translate when the back-translation QA
+    # check fell below the similarity threshold — a review flag, not a block.
+    low_confidence_translation: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Which rw path produced this response ("native" | "translate" | "faq"),
+    # for eval/analytics. NULL for English queries.
+    pipeline_mode: Mapped[str | None] = mapped_column(String(16), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
